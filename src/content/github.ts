@@ -30,11 +30,11 @@ const isRepo = (r: unknown): r is Repo =>
   (r.releases === null || every(r.releases, isRelease));
 
 export function validate(raw: unknown): GithubData {
-  if (raw === undefined) return fail('is missing');
   if (!isObj(raw)) return fail('is not an object');
   if (!str(raw.fetchedAt) || !str(raw.checkedAt)) return fail('lacks fetchedAt/checkedAt');
   if (!isObj(raw.liveness) || !Object.values(raw.liveness).every(num)) return fail('has a malformed liveness map');
   if (!Array.isArray(raw.repos)) return fail('has no repos array');
+  if (raw.repos.length === 0) return fail('has no repos');
   const bad = raw.repos.find((r) => !isRepo(r));
   if (bad) return fail(`has a malformed repo${isObj(bad) && str(bad.name) ? `: ${bad.name}` : ''}`);
   return raw as unknown as GithubData;

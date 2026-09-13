@@ -21,8 +21,8 @@ describe('validate', () => {
     expect(validate(ok).repos[0]?.name).toBe('x');
   });
 
-  it('rejects a missing file with the npm run content hint', () => {
-    expect(() => validate(undefined)).toThrow(/npm run content/);
+  it('rejects an empty repos array, so a bad fetch cannot build an empty portfolio', () => {
+    expect(() => validate({ ...ok, repos: [] })).toThrow(/npm run content/);
   });
 
   it('rejects a repo with a malformed field', () => {

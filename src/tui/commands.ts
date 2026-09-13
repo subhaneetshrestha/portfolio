@@ -70,7 +70,7 @@ export function run(line: string, ctx: Ctx) {
   const [name, ...args] = words(line);
   if (!name) return;
   const cmd = TABLE.find((c) => c.name === name);
-  if (!cmd) return ctx.print(`sh: ${name}: command not found. try help.`);
+  if (!cmd) return ctx.print(`bash: ${name}: command not found. try help.`);
   cmd.run(ctx, args);
 }
 

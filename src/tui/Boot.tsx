@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react';
 import { deployments } from '../content/deployments';
 import { github } from '../content/github';
+import { HOST, resume } from '../content/resume';
 import styles from './tui.module.css';
 
 // Every number here comes from github.generated.json.
+const { handle } = resume.profile;
 const checked = deployments.filter((d) => d.url);
-const live = checked.filter((d) => github.liveness[d.url!] === 200).length;
+// 2xx/3xx after redirects is live — the same rule the deployments pane draws its dot from.
+const live = checked.filter((d) => { const c = github.liveness[d.url!]; return c !== undefined && c >= 200 && c < 400; }).length;
 const LINES = [
-  'subhaneet-os 0.1.0 (arch) tty1',
-  '[ ok ] mounted /home/subhaneet',
+  `subhaneet-os (${HOST}) tty1`,
+  `[ ok ] mounted /home/${handle}`,
   `[ ok ] indexed ${github.repos.length} repositories`,
   `[ ok ] checked ${checked.length} deployments — ${live} live`,
   '[ ok ] started tui.service',
   '',
-  'login: subhaneet',
 ];
+const LOGIN = `login: ${handle}`;
 const STEP_MS = 140;
 const HOLD_MS = 350;
 
@@ -37,11 +40,13 @@ export function Boot({ onDone }: { onDone: () => void }) {
     };
   }, [onDone]);
 
+  // The typed lines are not a live region: re-announcing the whole log every
+  // tick is noise. The login line is the one polite announcement, at the end.
   return (
-    <pre role="log" aria-label="boot" className={styles.boot}>
-      {LINES.slice(0, shown).join('\n')}
-      {'\n'}
-      <span className="cursor">▊</span>
+    <pre className={styles.boot}>
+      {LINES.slice(0, shown).map((line, i) => <span key={i}>{line}{'\n'}</span>)}
+      <span role="status">{finished && `${LOGIN}\n`}</span>
+      <span className="cursor" aria-hidden="true">▊</span>
     </pre>
   );
 }

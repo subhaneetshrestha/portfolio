@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ComponentType } from 'react';
+import { HOST, resume } from '../content/resume';
 import { reducedMotion } from '../lib/prefs';
 import { Link, navigate, useRoute } from '../lib/router';
 import { Boot } from './Boot';
@@ -73,11 +74,11 @@ export function Shell({ boot = true }: { boot?: boolean }) {
   return (
     <div className={styles.shell}>
       <header className={styles.titlebar}>
-        <span className={styles.path}>subhaneet@arch:~{pane && pane !== 'about' ? `/${pane}` : ''}</span>
+        <span className={styles.path}>{resume.profile.handle}@{HOST}:~{pane && pane !== 'about' ? `/${pane}` : ''}</span>
         <nav aria-label="panes" className={styles.tabs}>
           {PANES.map((p) => (
             <Link key={p.id} to={p.path} aria-current={p.id === pane ? 'page' : undefined}>
-              <span className={styles.key}>{p.key}</span>
+              <span className={styles.key} aria-hidden="true">{p.key}</span>
               {p.id}
             </Link>
           ))}

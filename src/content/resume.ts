@@ -57,3 +57,7 @@ export const resume: Resume = {
     },
   ],
 };
+
+// The brand mark is the prompt. Every place that shows it imports this.
+export const HOST = 'arch';
+export const PROMPT = `${resume.profile.handle}@${HOST}:~$`;

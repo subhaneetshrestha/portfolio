@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { PROMPT } from './content/resume';
 import { Link, useRoute } from './lib/router';
 import { Shell } from './tui/Shell';
 
@@ -9,7 +10,7 @@ const Landing = lazy(() => import('./landing/Landing'));
 function NotFound() {
   return (
     <main className="centered">
-      <p>subhaneet@arch:~$ cd {window.location.pathname}</p>
+      <p>{PROMPT} cd {window.location.pathname}</p>
       <p className="muted">bash: cd: {window.location.pathname}: No such file or directory</p>
       <Link to="/tui">cd ~</Link>
     </main>

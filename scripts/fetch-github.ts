@@ -58,14 +58,46 @@ export function sortKeys<T>(v: T): T {
   return v;
 }
 
+type RawRelease = {
+  tag_name: string; name: string | null; draft: boolean; prerelease: boolean; published_at: string; html_url: string;
+  assets: { name: string; browser_download_url: string; size: number }[];
+};
+
+/** Published releases only: drafts have no published_at and their asset URLs are not public. */
+export function releasesOf(raw: RawRelease[]): Release[] {
+  return raw.filter((x) => !x.draft).map((x) => ({
+    tag: x.tag_name,
+    name: x.name ?? x.tag_name,
+    prerelease: x.prerelease,
+    publishedAt: x.published_at,
+    url: x.html_url,
+    assets: x.assets.map((a) => ({ name: a.name, url: a.browser_download_url, size: a.size })),
+  }));
+}
+
+const warn = (msg: string) => console.warn(`warn: ${msg}`);
+
+/** Final status per URL after redirects; 0 when the request never completed. Dead URLs are recorded, never dropped. */
+export async function checkLiveness(urls: Iterable<string>, get: typeof fetch = fetch): Promise<Record<string, number>> {
+  const liveness: Record<string, number> = {};
+  await Promise.all([...urls].map(async (url) => {
+    try {
+      const res = await get(url, { redirect: 'follow', signal: AbortSignal.timeout(10_000), headers: { 'User-Agent': `${USER}-portfolio` } });
+      liveness[url] = res.status;
+    } catch (e) {
+      liveness[url] = 0;
+      warn(`GET ${url} failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }));
+  return liveness;
+}
+
 // ---- network ----
 
 const token = () => {
   if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
   try { return execFileSync('gh', ['auth', 'token'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { return null; }
 };
-
-const warn = (msg: string) => console.warn(`warn: ${msg}`);
 
 async function main() {
   const auth = token();
@@ -77,7 +109,8 @@ async function main() {
     ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
   };
 
-  /** GET one API path. Returns null (after a warning) on any non-200 so a failed field is null, never fabricated. */
+  /** GET one API path. 404 is data (null). Any other non-200 is a failure: recorded, still null, and fails the run at the end. */
+  const failed: string[] = [];
   const get = async (path: string, accept = JSON_ACCEPT): Promise<unknown> => {
     const res = await fetch(`${API}${path}`, { headers: { ...headers, Accept: accept } });
     if (res.status === 200) return accept.includes('raw') ? res.text() : res.json();
@@ -85,7 +118,7 @@ async function main() {
       const reset = new Date(Number(res.headers.get('x-ratelimit-reset')) * 1000).toISOString();
       throw new Error(`GitHub rate limit exhausted; resets at ${reset}. Set GITHUB_TOKEN or log in with gh.`);
     }
-    if (res.status !== 404) warn(`GET ${path} -> ${res.status}`);
+    if (res.status !== 404) { warn(`GET ${path} -> ${res.status}`); failed.push(`${res.status} ${path}`); }
     return null;
   };
 
@@ -101,12 +134,9 @@ async function main() {
     if (batch.length < 100) break;
   }
   const own = raw.filter((r) => !r.fork);
+  if (own.length === 0) throw new Error('no non-fork repos; refusing to write an empty portfolio');
   console.log(`${raw.length} repos, ${own.length} non-fork`);
 
-  type RawRelease = {
-    tag_name: string; name: string | null; prerelease: boolean; published_at: string; html_url: string;
-    assets: { name: string; browser_download_url: string; size: number }[];
-  };
   const repos: Repo[] = [];
   for (const r of own) {
     const [languages, readme, releases] = await Promise.all([
@@ -126,14 +156,7 @@ async function main() {
       archived: r.archived,
       languages,
       readme: readme === null ? null : readmeExcerpt(readme),
-      releases: releases === null ? null : releases.map((x): Release => ({
-        tag: x.tag_name,
-        name: x.name ?? x.tag_name,
-        prerelease: x.prerelease,
-        publishedAt: x.published_at,
-        url: x.html_url,
-        assets: x.assets.map((a) => ({ name: a.name, url: a.browser_download_url, size: a.size })),
-      })),
+      releases: releases === null ? null : releasesOf(releases),
     });
     process.stdout.write('.');
   }
@@ -142,22 +165,18 @@ async function main() {
 
   // Liveness: real status codes, dead URLs recorded rather than dropped.
   const urls = new Set([...deployments.flatMap((d) => d.url ?? []), ...repos.flatMap((r) => r.homepage ?? [])]);
-  const liveness: Record<string, number> = {};
-  await Promise.all([...urls].map(async (url) => {
-    try {
-      const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(10_000), headers: { 'User-Agent': headers['User-Agent']! } });
-      liveness[url] = res.status;
-    } catch (e) {
-      liveness[url] = 0;
-      warn(`GET ${url} failed: ${e instanceof Error ? e.message : String(e)}`);
-    }
-    console.log(`${String(liveness[url]).padStart(3)} ${url}`);
-  }));
+  const liveness = await checkLiveness(urls);
+  for (const [url, code] of Object.entries(liveness)) console.log(`${String(code).padStart(3)} ${url}`);
 
   const now = new Date().toISOString();
   const data: GithubData = { fetchedAt: now, checkedAt: now, liveness, repos };
   writeFileSync(OUT, JSON.stringify(sortKeys(data), null, 2) + '\n');
   console.log(`wrote ${OUT.pathname}`);
+  // Written anyway so the partial data can be inspected; the exit code is what CI must see.
+  if (failed.length) {
+    warn(`${failed.length} request(s) failed; the nulls they left are not facts:\n  ${failed.join('\n  ')}`);
+    process.exit(1);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

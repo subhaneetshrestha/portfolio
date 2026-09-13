@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { projects } from '../../content/projects';
-import { resume } from '../../content/resume';
+import { PROMPT, resume } from '../../content/resume';
 import { About } from './About';
 
 const { profile } = resume;
@@ -9,7 +9,7 @@ describe('About pane', () => {
   it('keeps the pane heading and shows the whoami prompt', () => {
     render(<About />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/about/);
-    expect(screen.getByText('subhaneet@arch:~$ whoami')).toBeTruthy();
+    expect(screen.getByText(`${PROMPT} whoami`)).toBeTruthy();
   });
 
   it('renders name, title @ company, location, bio verbatim and summary', () => {
@@ -37,8 +37,8 @@ describe('About pane', () => {
     render(<About />);
     const featured = projects().filter((p) => p.featured).map((p) => p.name);
     expect(featured.length).toBeGreaterThan(0);
-    const now = screen.getByText(/^now:/);
-    const links = within(now).getAllByRole('link');
+    const featuredLine = screen.getByText(/^featured:/);
+    const links = within(featuredLine).getAllByRole('link');
     expect(links.map((a) => a.textContent)).toEqual(featured);
     for (const a of links) expect(a.getAttribute('href')).toBe('/tui/projects');
   });

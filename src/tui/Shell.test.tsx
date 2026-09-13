@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import { stubMatchMedia } from '../../tests/setup';
 import { Shell } from './Shell';
 
@@ -20,6 +21,14 @@ describe('Shell frame', () => {
     const nav = screen.getByRole('navigation', { name: /panes/i });
     const hrefs = within(nav).getAllByRole('link').map((a) => a.getAttribute('href'));
     expect(hrefs).toEqual(['/tui', '/tui/resume', '/tui/projects', '/tui/deployments']);
+  });
+
+  it('names each tab by its pane alone; the key hint is visual only', () => {
+    render(<Shell boot={false} />);
+    const nav = screen.getByRole('navigation', { name: /panes/i });
+    for (const id of ['about', 'resume', 'projects', 'deployments']) {
+      expect(within(nav).getByRole('link', { name: id })).toBeTruthy();
+    }
   });
 
   it('opens on about when no pane is given', () => {
@@ -119,10 +128,11 @@ describe('Boot sequence', () => {
   it('types the boot log, then reveals the frame', () => {
     render(<Shell />);
     expect(screen.queryByRole('main')).toBeNull();
-    expect(screen.getByRole('log')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(200));
+    expect(screen.getByText(/tty1/)).toBeTruthy();
     runBoot();
     expect(screen.getByRole('main')).toBeTruthy();
-    expect(screen.queryByRole('log', { name: 'boot' })).toBeNull();
+    expect(screen.queryByText(/tty1/)).toBeNull();
   });
 
   it('any key skips straight to the frame', () => {
@@ -143,6 +153,23 @@ describe('Boot sequence', () => {
     stubMatchMedia(true);
     render(<Shell />);
     expect(screen.getByRole('main')).toBeTruthy();
-    expect(screen.queryByRole('log', { name: 'boot' })).toBeNull();
+    expect(screen.queryByText(/tty1/)).toBeNull();
+  });
+});
+
+// jsdom computes neither ::before content nor :focus-visible, so the two
+// brand rules the shell's stylesheet must keep are read from the source.
+describe('Shell stylesheet', () => {
+  const css = readFileSync('src/tui/tui.module.css', 'utf8');
+
+  it('draws every focus ring in --primary', () => {
+    const rings = css.match(/focus-visible[^{]*\{[^}]*\}/g) ?? [];
+    expect(rings.length).toBeGreaterThan(0);
+    for (const rule of rings) expect(rule).toContain('var(--primary)');
+    expect(rings.join('')).not.toContain('--accent');
+  });
+
+  it('hides the decorative heading glyph from assistive tech', () => {
+    expect(css).toMatch(/content:\s*'# '\s*\/\s*''/);
   });
 });

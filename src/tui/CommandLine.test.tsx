@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { PROMPT } from '../content/resume';
 import { CommandLine } from './CommandLine';
 
 const at = (path: string) => window.history.replaceState(null, '', path);
@@ -14,7 +15,7 @@ beforeEach(() => at('/tui'));
 describe('CommandLine', () => {
   it('shows the prompt as the visible label of the input', () => {
     render(<CommandLine />);
-    expect(screen.getByText('subhaneet@arch:~$', { selector: 'label' })).toBeTruthy();
+    expect(screen.getByText('hyzii@arch:~$', { selector: 'label' })).toBeTruthy();
     expect(input().getAttribute('autocomplete')).toBe('off');
     expect(input().getAttribute('spellcheck')).toBe('false');
   });
@@ -33,14 +34,14 @@ describe('CommandLine', () => {
     expect(log.getAttribute('aria-live')).toBe('polite');
     const items = within(log).getAllByRole('listitem');
     expect(items).toHaveLength(1);
-    expect(items[0]!.textContent).toContain('whoami');
+    expect(items[0]!.textContent).toContain(`${PROMPT} whoami`);
     expect(items[0]!.textContent).toContain('Subhaneet Shrestha');
   });
 
   it('tells you when a command does not exist', () => {
     render(<CommandLine />);
     enter('nope');
-    expect(screen.getByRole('log').textContent).toContain('sh: nope: command not found. try help.');
+    expect(screen.getByRole('log').textContent).toContain('bash: nope: command not found. try help.');
   });
 
   it('clear empties the log', () => {
@@ -76,6 +77,25 @@ describe('CommandLine', () => {
     expect(input().value).toBe('help');
     fireEvent.keyDown(input(), { key: 'ArrowDown' });
     expect(input().value).toBe('');
+  });
+
+  it('ArrowUp parks the half-typed line as a draft and ArrowDown past the newest entry restores it', () => {
+    render(<CommandLine />);
+    enter('whoami');
+    type('hel');
+    fireEvent.keyDown(input(), { key: 'ArrowUp' });
+    expect(input().value).toBe('whoami');
+    fireEvent.keyDown(input(), { key: 'ArrowDown' });
+    expect(input().value).toBe('hel');
+  });
+
+  it('ArrowUp with no history and ArrowDown at the live line leave the input alone', () => {
+    render(<CommandLine />);
+    type('abc');
+    fireEvent.keyDown(input(), { key: 'ArrowUp' });
+    expect(input().value).toBe('abc');
+    fireEvent.keyDown(input(), { key: 'ArrowDown' });
+    expect(input().value).toBe('abc');
   });
 
   it('Tab completes a single match in place', () => {

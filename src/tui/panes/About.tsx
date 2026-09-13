@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { projects } from '../../content/projects';
-import { resume } from '../../content/resume';
+import { PROMPT, resume } from '../../content/resume';
 import { Link } from '../../lib/router';
 import s from './resume.module.css';
 
@@ -11,7 +11,7 @@ export function About() {
   return (
     <div className={s.doc}>
       <h1>about</h1>
-      <p className={s.prompt}>subhaneet@arch:~$ whoami</p>
+      <p className={s.prompt}>{PROMPT} whoami</p>
 
       <p>{profile.name}</p>
       <p>{profile.title} @ {profile.company}</p>
@@ -26,7 +26,7 @@ export function About() {
       </ul>
 
       <p>
-        now:{' '}
+        featured:{' '}
         {featured.length === 0
           ? <span className={s.meta}>no featured projects in the data</span>
           : featured.map((p, i) => (

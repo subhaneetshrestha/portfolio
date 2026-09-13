@@ -15,5 +15,5 @@ export const deployments: Deployment[] = [
   },
   { id: 'space-z', kind: 'release', label: 'space-z', repo: 'space-z', note: 'LÖVE game; Android APK, Windows, .love' },
   { id: 'atomic-launcher', kind: 'release', label: 'atomic-launcher', repo: 'atomic-launcher', note: 'Android launcher; edge pre-release' },
-  { id: 'pokerivia', kind: 'retired', label: 'pokerivia', url: 'https://pokerivia.vercel.app', repo: 'pokerivia', note: 'returns 404' },
+  { id: 'pokerivia', kind: 'retired', label: 'pokerivia', url: 'https://pokerivia.vercel.app', repo: 'pokerivia', note: 'no longer deployed' },
 ];

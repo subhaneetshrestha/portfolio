@@ -138,7 +138,7 @@ describe('unknown input', () => {
   it('prints the not-found line and points at help', () => {
     const c = ctx();
     run('frobnicate now', c);
-    expect(c.out).toEqual(['sh: frobnicate: command not found. try help.']);
+    expect(c.out).toEqual(['bash: frobnicate: command not found. try help.']);
   });
 
   it('ignores surrounding whitespace', () => {

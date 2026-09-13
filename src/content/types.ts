@@ -18,7 +18,7 @@ export type Role = {
   company: string;
   title: string;
   start: string | Todo;
-  end: string | 'present';
+  end: string;
   bullets: (string | Todo)[];
 };
 

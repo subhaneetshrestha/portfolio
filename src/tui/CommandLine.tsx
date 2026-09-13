@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent, Ref } from 'react';
 import { deployments } from '../content/deployments';
 import { projects } from '../content/projects';
+import { PROMPT } from '../content/resume';
 import { navigate } from '../lib/router';
 import { complete, run } from './commands';
 import styles from './tui.module.css';
@@ -16,6 +17,7 @@ export function CommandLine({ ref }: { ref?: Ref<HTMLInputElement> }) {
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [cursor, setCursor] = useState(0); // 0 = live input, n = history[length - n]
+  const draft = useRef(''); // what was typed at the live line before ArrowUp left it
   const logRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
@@ -48,8 +50,10 @@ export function CommandLine({ ref }: { ref?: Ref<HTMLInputElement> }) {
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
       const next = Math.min(Math.max(cursor + (e.key === 'ArrowUp' ? 1 : -1), 0), history.length);
+      if (next === cursor) return;
+      if (cursor === 0) draft.current = value;
       setCursor(next);
-      setValue(next === 0 ? '' : history[history.length - next]!);
+      setValue(next === 0 ? draft.current : history[history.length - next]!);
     } else if (e.key === 'Tab' && !e.shiftKey) {
       const found = complete(value, { projects: ALL, deployments });
       if (found.length === 0) return;
@@ -66,13 +70,13 @@ export function CommandLine({ ref }: { ref?: Ref<HTMLInputElement> }) {
       <ul role="log" aria-live="polite" aria-label="command output" className={styles.log} ref={logRef}>
         {log.map((entry, i) => (
           <li key={i}>
-            <span className={styles.echo}>subhaneet@arch:~$ {entry.input}</span>
+            <span className={styles.echo}>{PROMPT} {entry.input}</span>
             {entry.output.length > 0 && <pre>{entry.output.join('\n')}</pre>}
           </li>
         ))}
       </ul>
       <div className={styles.prompt}>
-        <label htmlFor="cmd">subhaneet@arch:~$</label>
+        <label htmlFor="cmd">{PROMPT}</label>
         <input
           id="cmd"
           ref={ref}
