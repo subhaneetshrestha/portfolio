@@ -23,8 +23,11 @@ describe('build output', () => {
     expect(existsSync('dist/index.html')).toBe(true);
   });
 
-  it('ships the Cloudflare SPA fallback so deep links survive a cold load', () => {
-    expect(readFileSync('dist/_redirects', 'utf8')).toMatch(/^\/\*\s+\/index\.html\s+200/m);
+  it('configures the Workers SPA fallback so deep links survive a cold load', () => {
+    // Cloudflare Workers static assets: unmatched paths serve index.html.
+    const cfg = JSON.parse(readFileSync('wrangler.jsonc', 'utf8'));
+    expect(cfg.assets.directory).toBe('./dist');
+    expect(cfg.assets.not_found_handling).toBe('single-page-application');
   });
 
   it('loads the landing as a dynamic import from the entry', () => {
