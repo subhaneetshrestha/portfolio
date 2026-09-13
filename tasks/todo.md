@@ -114,12 +114,12 @@ marked as explicit TODOs.
 a print stylesheet that produces a clean single-column A4 page through the browser — no PDF dependency.
 
 **Acceptance criteria:**
-- [ ] Reads entirely from `resume.ts`; no hardcoded copy in the component
-- [ ] TODO fields render as visible placeholders — never blank, never invented content
+- [x] Reads entirely from `resume.ts`; no hardcoded copy in the component
+- [x] TODO fields render as visible placeholders — never blank, never invented content
 - [ ] `Ctrl+P` produces a legible single-column A4 page
 
 **Verification:**
-- [ ] Build succeeds: `npm run build`
+- [x] Build succeeds: `npm run build`
 - [ ] Manual check: print-preview and read the output
 - [ ] Manual check: select-all, copy, paste into a plain text editor — confirm it reads cleanly
 
@@ -141,12 +141,12 @@ right showing description, language bar, README excerpt, and last-push recency. 
 clones live in a collapsed archive section.
 
 **Acceptance criteria:**
-- [ ] Language bars reflect real byte counts from the API, not estimates
-- [ ] `j`/`k` moves selection, `Enter` opens detail, `Esc` returns to the list
-- [ ] Archive section is collapsed by default and clearly labelled
+- [x] Language bars reflect real byte counts from the API, not estimates
+- [x] `j`/`k` moves selection, `Enter` opens detail, `Esc` returns to the list
+- [x] Archive section is collapsed by default and clearly labelled
 
 **Verification:**
-- [ ] Build succeeds: `npm run build`
+- [x] Build succeeds: `npm run build`
 - [ ] Manual check: cross-check three repos' language bars against `gh api repos/subhaneetshrestha/<r>/languages`
 - [ ] Manual check: navigate the full list and back using only the keyboard
 
@@ -168,12 +168,12 @@ the build-time check. **RELEASES** — `space-z` v0.0.3 (apk/exe/love), `atomic-
 is checkable.
 
 **Acceptance criteria:**
-- [ ] Status dots come from the build-time liveness check, never hardcoded
-- [ ] Release rows link to real GitHub Releases assets
-- [ ] Retired entries are visually distinct (`--dead`) and labelled with the reason
+- [x] Status dots come from the build-time liveness check, never hardcoded
+- [x] Release rows link to real GitHub Releases assets
+- [x] Retired entries are visually distinct (`--dead`) and labelled with the reason
 
 **Verification:**
-- [ ] Build succeeds: `npm run build`
+- [x] Build succeeds: `npm run build`
 - [ ] Manual check: compare each rendered status against a fresh `curl -o /dev/null -w '%{http_code}' -L <url>`
 - [ ] Manual check: click through every release asset link
 
