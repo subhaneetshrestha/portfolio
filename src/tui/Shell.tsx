@@ -5,6 +5,10 @@ import { Link, navigate, useRoute } from '../lib/router';
 import { Boot } from './Boot';
 import { PANES, paneFromRoute } from './panes';
 import type { PaneId } from './panes';
+import { About } from './panes/About';
+import { Deployments } from './panes/Deployments';
+import { Projects } from './panes/Projects';
+import { Resume } from './panes/Resume';
 import styles from './tui.module.css';
 
 const BOOTED_KEY = 'tui.booted';
@@ -18,18 +22,11 @@ const rememberBooted = () => {
 const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement && t.matches('input, textarea, select, [contenteditable]');
 
-// Tasks 4–6 swap the stubs for real panes here.
-const Stub = (id: PaneId) => () => (
-  <>
-    <h1>{id}</h1>
-    <p className="muted">nothing here yet.</p>
-  </>
-);
 const VIEWS: Record<PaneId, ComponentType> = {
-  about: Stub('about'),
-  resume: Stub('resume'),
-  projects: Stub('projects'),
-  deployments: Stub('deployments'),
+  about: About,
+  resume: Resume,
+  projects: Projects,
+  deployments: Deployments,
 };
 
 export function Shell({ boot = true }: { boot?: boolean }) {

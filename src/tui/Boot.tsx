@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
+import { deployments } from '../content/deployments';
+import { github } from '../content/github';
 import styles from './tui.module.css';
 
-// Flavour, not claims: nothing here asserts a number we can't back.
+// Every number here comes from github.generated.json.
+const checked = deployments.filter((d) => d.url);
+const live = checked.filter((d) => github.liveness[d.url!] === 200).length;
 const LINES = [
   'subhaneet-os 0.1.0 (arch) tty1',
   '[ ok ] mounted /home/subhaneet',
+  `[ ok ] indexed ${github.repos.length} repositories`,
+  `[ ok ] checked ${checked.length} deployments — ${live} live`,
   '[ ok ] started tui.service',
   '',
   'login: subhaneet',
