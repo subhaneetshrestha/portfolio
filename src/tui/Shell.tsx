@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { reducedMotion } from '../lib/prefs';
 import { Link, navigate, useRoute } from '../lib/router';
 import { Boot } from './Boot';
+import { CommandLine } from './CommandLine';
 import { PANES, paneFromRoute } from './panes';
 import type { PaneId } from './panes';
 import { About } from './panes/About';
@@ -38,6 +39,7 @@ export function Shell({ boot = true }: { boot?: boolean }) {
   const finishBoot = useCallback(() => { rememberBooted(); setBooted(true); }, []);
   const [help, setHelp] = useState(false);
   const paneRef = useRef<HTMLElement>(null);
+  const cmdRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!booted) return;
@@ -45,6 +47,7 @@ export function Shell({ boot = true }: { boot?: boolean }) {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
       if (e.key === 'Escape') return setHelp(false);
       if (e.key === '?') return setHelp((h) => !h);
+      if (e.key === ':') { e.preventDefault(); return cmdRef.current?.focus(); }
       const jump = PANES.find((p) => p.key === e.key);
       if (jump) return navigate(jump.path);
       const idx = PANES.findIndex((p) => p.id === pane);
@@ -92,6 +95,8 @@ export function Shell({ boot = true }: { boot?: boolean }) {
         )}
       </main>
 
+      <CommandLine ref={cmdRef} />
+
       <footer className={styles.statusline}>
         <span>{pane ?? 'error'}</span>
         <button type="button" className={styles.hint} onClick={() => setHelp(true)}>?:help</button>
@@ -112,6 +117,7 @@ function Help({ onClose }: { onClose: () => void }) {
         <dt>1-4</dt><dd>jump to pane</dd>
         <dt>h l ← →</dt><dd>switch pane</dd>
         <dt>j k ↑ ↓</dt><dd>scroll</dd>
+        <dt>:</dt><dd>command line</dd>
         <dt>tab</dt><dd>move focus (browser-native)</dd>
         <dt>?</dt><dd>toggle this help</dd>
         <dt>esc</dt><dd>close</dd>

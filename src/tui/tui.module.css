@@ -1,7 +1,7 @@
 .shell {
   height: 100dvh;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   max-width: 100ch;
   margin: 0 auto;
 }
@@ -77,3 +77,31 @@ button.hint:focus-visible { outline: 2px solid var(--primary); outline-offset: 2
   cursor: pointer;
 }
 .help button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.cmd {
+  border-top: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+  padding: 0.5rem 1ch;
+}
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 30dvh;
+  overflow: auto;
+}
+.log li { margin: 0 0 0.25rem; }
+.log pre { margin: 0; font: inherit; white-space: pre-wrap; color: var(--muted-fg); }
+.echo { color: var(--fg); }
+.prompt { display: flex; gap: 1ch; align-items: baseline; }
+.prompt label { color: var(--primary); white-space: nowrap; }
+.prompt input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--fg);
+  caret-color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.prompt input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

@@ -85,6 +85,19 @@ describe('Shell keyboard', () => {
     expect(window.location.pathname).toBe('/tui');
   });
 
+  it(': focuses the command line, vim-style', () => {
+    render(<Shell boot={false} />);
+    expect(fireEvent.keyDown(window, { key: ':' })).toBe(false);
+    expect(document.activeElement).toBe(screen.getByLabelText('command'));
+  });
+
+  it('mounts the command line between the pane and the status line', () => {
+    render(<Shell boot={false} />);
+    const form = screen.getByLabelText('command').closest('form')!;
+    expect(screen.getByRole('main').compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(form.compareDocumentPosition(screen.getByRole('contentinfo')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('ignores chords with ctrl/meta/alt so browser shortcuts still work', () => {
     render(<Shell boot={false} />);
     fireEvent.keyDown(window, { key: '2', ctrlKey: true });
@@ -109,7 +122,7 @@ describe('Boot sequence', () => {
     expect(screen.getByRole('log')).toBeTruthy();
     runBoot();
     expect(screen.getByRole('main')).toBeTruthy();
-    expect(screen.queryByRole('log')).toBeNull();
+    expect(screen.queryByRole('log', { name: 'boot' })).toBeNull();
   });
 
   it('any key skips straight to the frame', () => {
@@ -130,6 +143,6 @@ describe('Boot sequence', () => {
     stubMatchMedia(true);
     render(<Shell />);
     expect(screen.getByRole('main')).toBeTruthy();
-    expect(screen.queryByRole('log')).toBeNull();
+    expect(screen.queryByRole('log', { name: 'boot' })).toBeNull();
   });
 });
