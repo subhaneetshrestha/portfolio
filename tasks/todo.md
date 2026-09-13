@@ -1,0 +1,477 @@
+# Task List: Portfolio — 3D CRT landing → TUI resume
+
+Plan document: [`plan.md`](./plan.md)
+
+Vertically sliced — each task delivers one complete working path, not a horizontal layer.
+Tasks are ordered so dependencies are satisfied and the system is left working after each one.
+
+---
+
+## Phase 0: Foundation
+
+## Task 1: Live skeleton on Cloudflare Pages
+
+**Description:** Scaffold Vite + React 19 + TypeScript, define the brand design tokens as CSS custom
+properties, self-host a JetBrains Mono woff2 subset, set up routing for `/` and `/tui`, push to a new
+GitHub repo, and connect it to Cloudflare Pages. Hosting is proven on day one rather than discovered
+to be broken at the end.
+
+**Acceptance criteria:**
+- [ ] `npm run build` emits static output and `npm run dev` serves locally
+- [ ] A public `*.pages.dev` URL renders a placeholder in JetBrains Mono on `--bg`
+- [ ] Every brand color exists as a CSS custom property; no raw hex in any component
+- [ ] `/` and `/tui` are separate routes with the landing chunk lazily imported
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: open the live `*.pages.dev` URL
+- [ ] Manual check: DevTools Network shows the font served from own origin — no `fonts.gstatic.com`
+
+**Dependencies:** None
+
+**Files likely touched:**
+- `package.json`
+- `vite.config.ts`
+- `index.html`
+- `src/styles/tokens.css`
+- `src/main.tsx`
+
+**Estimated scope:** Small
+
+---
+
+### Checkpoint: Foundation
+- [ ] Build succeeds with no type errors
+- [ ] Public URL live and rendering
+- [ ] Fonts self-hosted, tokens in place
+
+---
+
+## Phase 1: The TUI (the actual portfolio)
+
+## Task 2: TUI shell
+
+**Description:** The persistent frame everything else renders inside — title bar, status line, pane
+region, and the blinking `▊` cursor. Boot sequence on first paint. Keyboard navigation (`j`/`k`,
+arrows, `Tab`, `1`–`4`, `?` for help). Panes are deep-linkable through the router.
+
+**Acceptance criteria:**
+- [ ] `/tui` renders the frame with a working boot sequence
+- [ ] Every pane is reachable by keyboard alone, with a visible focus ring in `--primary`
+- [ ] `/tui/resume` deep-links straight to that pane on a cold load
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: unplug the mouse, reach all four panes and return
+- [ ] Manual check: hard-reload `/tui/projects` and confirm it opens on that pane
+
+**Dependencies:** Task 1
+
+**Files likely touched:**
+- `src/tui/Shell.tsx`
+- `src/tui/StatusLine.tsx`
+- `src/tui/Boot.tsx`
+- `src/tui/tui.module.css`
+
+**Estimated scope:** Medium
+
+---
+
+## Task 3: Typed content layer + GitHub fetch
+
+**Description:** Define schemas for resume, project, and deployment. Write `scripts/fetch-github.ts`
+to pull repos, language byte counts, releases, and homepage URLs at build time, plus a liveness check
+that records real HTTP status. Pre-fill `resume.ts` from verified evidence (Maitri Services ·
+Lalitpur, Nepal · GitHub since Jun 2020 · the JS→TS→Go language arc) with employment-history fields
+marked as explicit TODOs.
+
+**Acceptance criteria:**
+- [ ] `npm run content` regenerates `src/content/github.generated.json`
+- [ ] Build fails loudly if generated content is missing — never silently ships an empty portfolio
+- [ ] Dead URLs are recorded as dead with their status code, not dropped from the data
+- [ ] Employment-history TODOs are typed such that omitting them is visible, not silently empty
+
+**Verification:**
+- [ ] Command succeeds: `npm run content && git diff --stat src/content/`
+- [ ] Manual check: cross-check one repo's languages against `gh api repos/subhaneetshrestha/<r>/languages`
+- [ ] Manual check: temporarily delete the generated file and confirm the build fails with a clear message
+
+**Dependencies:** Task 1
+
+**Files likely touched:**
+- `scripts/fetch-github.ts`
+- `src/content/types.ts`
+- `src/content/resume.ts`
+- `src/content/deployments.ts`
+
+**Estimated scope:** Medium
+
+---
+
+## Task 4: `resume` pane
+
+**Description:** Render `resume.ts` as a dense terminal document. Include a plain-text copy action and
+a print stylesheet that produces a clean single-column A4 page through the browser — no PDF dependency.
+
+**Acceptance criteria:**
+- [ ] Reads entirely from `resume.ts`; no hardcoded copy in the component
+- [ ] TODO fields render as visible placeholders — never blank, never invented content
+- [ ] `Ctrl+P` produces a legible single-column A4 page
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: print-preview and read the output
+- [ ] Manual check: select-all, copy, paste into a plain text editor — confirm it reads cleanly
+
+**Dependencies:** Tasks 2, 3
+
+**Files likely touched:**
+- `src/tui/panes/Resume.tsx`
+- `src/styles/print.css`
+
+**Estimated scope:** Small
+
+---
+
+## Task 5: `projects` pane
+
+**Description:** Master/detail browser over the generated repo data. List on the left; detail on the
+right showing description, language bar, README excerpt, and last-push recency. Curated ordering puts
+`atomic-launcher`, `space-z`, `nepse-analyzer`, `karya`, and `flavique` first; the 2021 tutorial
+clones live in a collapsed archive section.
+
+**Acceptance criteria:**
+- [ ] Language bars reflect real byte counts from the API, not estimates
+- [ ] `j`/`k` moves selection, `Enter` opens detail, `Esc` returns to the list
+- [ ] Archive section is collapsed by default and clearly labelled
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: cross-check three repos' language bars against `gh api repos/subhaneetshrestha/<r>/languages`
+- [ ] Manual check: navigate the full list and back using only the keyboard
+
+**Dependencies:** Tasks 2, 3
+
+**Files likely touched:**
+- `src/tui/panes/Projects.tsx`
+- `src/tui/LangBar.tsx`
+
+**Estimated scope:** Medium
+
+---
+
+## Task 6: `deployments` pane
+
+**Description:** Three honest sections. **LIVE** — `open-canvas`, `inventory`, with status dots from
+the build-time check. **RELEASES** — `space-z` v0.0.3 (apk/exe/love), `atomic-launcher` edge.
+**RETIRED** — `pokerivia` (404), shown rather than hidden, because the brand rule is that every claim
+is checkable.
+
+**Acceptance criteria:**
+- [ ] Status dots come from the build-time liveness check, never hardcoded
+- [ ] Release rows link to real GitHub Releases assets
+- [ ] Retired entries are visually distinct (`--dead`) and labelled with the reason
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: compare each rendered status against a fresh `curl -o /dev/null -w '%{http_code}' -L <url>`
+- [ ] Manual check: click through every release asset link
+
+**Dependencies:** Tasks 2, 3
+
+**Files likely touched:**
+- `src/tui/panes/Deployments.tsx`
+- `src/tui/StatusDot.tsx`
+
+**Estimated scope:** Medium
+
+---
+
+## Task 7: Command line
+
+**Description:** Input bar with a table-driven dispatcher: `help`, `resume`, `projects`,
+`deployments`, `open <name>`, `contact`, `clear`, `whoami`, `poweroff`. History via up/down arrows,
+Tab-completion for commands and project names, and an unknown-command message in the brand's dry voice.
+
+**Acceptance criteria:**
+- [ ] Every command routes correctly; unknown input gives a useful message, not a generic error
+- [ ] Tab completes both command names and project names
+- [ ] Commands are defined in a table, not a switch chain — one place to add more
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: run every command in the table
+- [ ] Manual check: press Tab on a partial project name; press up-arrow to recall history
+
+**Dependencies:** Tasks 4, 5, 6
+
+**Files likely touched:**
+- `src/tui/CommandLine.tsx`
+- `src/tui/commands.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Checkpoint A: Shippable portfolio, no 3D
+- [ ] All tests pass and the application builds without errors
+- [ ] All four panes work keyboard-only, end to end
+- [ ] Live on Cloudflare Pages; resume prints cleanly
+- [ ] **This is a complete portfolio. Everything after is enhancement.**
+- [ ] **Review with human before proceeding.**
+
+---
+
+## Phase 2: The 3D landing
+
+## Task 8: Procedural CRT scene
+
+**Description:** Build the monitor from Three.js primitives in `src/three/crt.ts` — bevelled shell,
+curved screen plane, emissive material, subtle bloom, dark room with a single key light. Idle camera
+drift plus damped pointer parallax, using a hand-rolled rig rather than `OrbitControls` (users must not
+be able to orbit away mid-reveal). Renders on `/` inside its own lazily-loaded chunk.
+
+**Acceptance criteria:**
+- [ ] No external 3D assets committed to the repo
+- [ ] Holds 60fps on desktop; device pixel ratio capped at 2
+- [ ] `three` appears only in the lazily-loaded landing chunk
+
+**Verification:**
+- [ ] Build succeeds: `npm run build` — inspect the chunk split in the output
+- [ ] Manual check: DevTools Performance trace, confirm frame time under 16ms
+- [ ] Manual check: load `/tui` and confirm `three` is never requested
+
+**Dependencies:** Task 1
+
+**Files likely touched:**
+- `src/three/crt.ts`
+- `src/three/scene.ts`
+- `src/landing/Landing.tsx`
+
+**Estimated scope:** Medium
+
+---
+
+### Checkpoint B: Does the procedural CRT look good enough?
+- [ ] Review the rendered scene against the intended feel
+- [ ] **Decide here:** invest further in materials and lighting, or source a licensed model
+- [ ] Cheaper to decide now than after the transition is wired
+- [ ] **Review with human before proceeding.**
+
+---
+
+## Task 9: Live screen texture
+
+**Description:** Draw the boot log to a 2D canvas and map it onto the screen plane as a
+`CanvasTexture` — chosen over a `WebGLRenderTarget` for crisper text at a fraction of the cost.
+Blinking cursor, scanlines, slight barrel curve. Text must be legible at the landing camera distance.
+
+**Acceptance criteria:**
+- [ ] Screen text is readable in a 1440px-wide screenshot
+- [ ] Texture updates only when content changes — no per-frame redraw
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: screenshot at 1440px and at 375px, read the text in both
+- [ ] Manual check: DevTools Performance, confirm no texture upload on idle frames
+
+**Dependencies:** Task 8
+
+**Files likely touched:**
+- `src/three/screenTexture.ts`
+
+**Estimated scope:** Small
+
+---
+
+## Task 10: The dive
+
+**Description:** The centerpiece transition. GSAP camera timeline, raycast click with
+`recursive: true`, coordinated light/bloom/scanline ramp, scale-matched cross-fade into the DOM TUI,
+and full WebGL teardown afterwards. `poweroff` reverses the whole thing.
+
+**Acceptance criteria:**
+- [ ] Clicking the screen reliably registers — `intersectObjects(targets, true)`, since geometry lives on child meshes
+- [ ] Handoff has no visible jump in scale or position
+- [ ] After the transition the WebGL context is released; no idle render loop remains
+- [ ] `poweroff` returns to `/` and rebuilds the scene cleanly
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: DevTools Memory — confirm the context is gone post-transition
+- [ ] Manual check: record the seam and step through it frame-by-frame
+- [ ] Manual check: run the dive and `poweroff` five times; confirm no leak or degradation
+
+**Dependencies:** Tasks 9, 2
+
+**Files likely touched:**
+- `src/three/dive.ts`
+- `src/landing/Landing.tsx`
+- `src/tui/Shell.tsx`
+
+**Estimated scope:** Medium
+
+---
+
+## Task 11: Fallbacks
+
+**Description:** `prefers-reduced-motion` routes straight to `/tui`. No WebGL, or a detected low-end
+device, routes straight to `/tui`. A persistent, visible skip control on the landing. A slow-load
+timeout escape hatch.
+
+**Acceptance criteria:**
+- [ ] Reduced-motion never loads the `three` chunk at all
+- [ ] Skip control is visible and keyboard-reachable within one Tab
+- [ ] Forcing WebGL off still yields a complete, usable portfolio
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: emulate reduced-motion in DevTools, confirm `three` never appears in Network
+- [ ] Manual check: disable WebGL via browser flags and load `/`
+- [ ] Manual check: throttle to Slow 3G and confirm the timeout escape fires
+
+**Dependencies:** Task 10
+
+**Files likely touched:**
+- `src/landing/Landing.tsx`
+- `src/lib/capabilities.ts`
+
+**Estimated scope:** Small
+
+---
+
+### Checkpoint C: Full experience end to end
+- [ ] Application builds without errors
+- [ ] Landing → dive → TUI works, and `poweroff` reverses it
+- [ ] Every fallback exercised: reduced-motion, no-WebGL, Slow 3G, skip control
+- [ ] **Review with human before proceeding.**
+
+---
+
+## Phase 3: Polish
+
+## Task 12: Touch + mobile TUI
+
+**Description:** A typed command line behind a virtual keyboard is bad UX on a phone. Below 768px the
+same content becomes a touch-first pane list with 44×44px targets, and the command bar becomes opt-in
+behind a button. The landing gets a lighter scene, or skips to the TUI, on low-end devices.
+
+**Acceptance criteria:**
+- [ ] Usable one-thumbed at 375px with no horizontal scroll
+- [ ] Every touch target is at least 44×44px with at least 8px spacing
+- [ ] The virtual keyboard never covers the active pane
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: test on a real phone, not only DevTools emulation
+- [ ] Manual check: open the command bar on mobile and confirm the pane stays visible
+
+**Dependencies:** Tasks 7, 11
+
+**Files likely touched:**
+- `src/tui/Shell.tsx`
+- `src/tui/MobileNav.tsx`
+- `src/styles/responsive.css`
+
+**Estimated scope:** Medium
+
+---
+
+## Task 13: Accessibility + performance pass
+
+**Description:** The retro-futurism/CRT style carries a **HIGH** accessibility risk — scanlines and
+glow actively degrade contrast. Audit every text/background pair, put the CRT effect behind a
+persisted toggle, verify focus visibility everywhere, and add landmarks plus live-region
+announcements for pane changes.
+
+**Acceptance criteria:**
+- [ ] Every text/background pair measures at least 4.5:1 — measured, not assumed
+- [ ] Scanline/glow toggle persists across reloads and defaults off under reduced-motion
+- [ ] Lighthouse accessibility ≥95 and performance ≥90 on `/tui`
+- [ ] Screen reader announces pane changes
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: run Lighthouse on both `/` and `/tui`
+- [ ] Manual check: one full pass with a screen reader
+- [ ] Manual check: contrast-check every token pair with a measuring tool
+
+**Dependencies:** Task 12
+
+**Files likely touched:**
+- `src/styles/tokens.css`
+- `src/tui/Shell.tsx`
+- `src/lib/prefs.ts`
+
+**Estimated scope:** Medium
+
+---
+
+## Task 14: Metadata + share
+
+**Description:** Title, description, canonical URL, and OG/Twitter cards written in the brand voice.
+The OG image is a rendered terminal frame. Favicon is the `▊` block cursor. Add `robots.txt` and a
+sitemap. No analytics — consistent with the privacy stance `smart-wallet` takes.
+
+**Acceptance criteria:**
+- [ ] OG card renders correctly in a card validator
+- [ ] Favicon is the block cursor mark
+- [ ] No third-party network requests at runtime
+
+**Verification:**
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: paste the live URL into a social card validator
+- [ ] Manual check: DevTools Network filtered to third-party — confirm the list is empty
+
+**Dependencies:** Task 13
+
+**Files likely touched:**
+- `index.html`
+- `public/og.png`
+- `public/favicon.svg`
+- `public/robots.txt`
+
+**Estimated scope:** Small
+
+---
+
+## Task 15: CI + scheduled refresh
+
+**Description:** GitHub Action running typecheck and build on push, plus a scheduled weekly run of
+`npm run content` that commits any changes and triggers a redeploy. The site then tracks GitHub
+without manual work.
+
+**Acceptance criteria:**
+- [ ] CI fails on type errors
+- [ ] The scheduled run updates generated content and redeploys
+- [ ] A new repo or release appears on the live site without manual intervention
+
+**Verification:**
+- [ ] CI passes on a test push
+- [ ] Manual check: trigger the content workflow manually via `gh workflow run`
+- [ ] Manual check: confirm the live site reflects a fresh push
+
+**Dependencies:** Task 14
+
+**Files likely touched:**
+- `.github/workflows/ci.yml`
+- `.github/workflows/content.yml`
+
+**Estimated scope:** Small
+
+---
+
+### Checkpoint D: Complete
+- [ ] All acceptance criteria met across every task
+- [ ] Live on Cloudflare Pages and self-updating
+- [ ] Ready for review
+
+---
+
+## Blocked on user input
+
+- [ ] **Employment history** for `resume.ts` — roles, dates, responsibilities, education.
+      Blocks only the TODO fields in Task 3; every other task can proceed.
+- [ ] **Custom domain** — optional; one DNS step in Task 1 if one exists.
+- [ ] **Upstream fix (not this repo):** `space-z`, `karya`, and `flavique` have no GitHub
+      description. Task 5 surfaces them prominently and they will otherwise render empty.
