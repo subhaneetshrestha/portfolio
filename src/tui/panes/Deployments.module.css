@@ -1,0 +1,43 @@
+.table {
+  border-collapse: collapse;
+  margin: 0 0 1.5rem;
+}
+.table caption {
+  text-align: left;
+  color: var(--primary);
+  padding: 0 0 0.25rem;
+}
+.table th {
+  text-align: left;
+  font-weight: 400;
+  font-size: var(--text-sm);
+  color: var(--muted-fg);
+}
+.table th,
+.table td {
+  padding: 0.125rem 2ch 0.125rem 0;
+  vertical-align: top;
+}
+.table td:last-child { padding-right: 0; }
+
+.dot[data-status='ok'] { color: var(--ok); }
+.dot[data-status='dead'] { color: var(--dead); }
+.down { color: var(--accent); }
+
+.retired td { color: var(--dead); }
+
+.assets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1ch;
+}
+.assets li + li::before { content: '/ '; color: var(--muted-fg); }
+
+.checked {
+  color: var(--muted-fg);
+  font-size: var(--text-sm);
+  margin: 0;
+}
