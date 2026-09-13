@@ -41,9 +41,9 @@ to be broken at the end.
 ---
 
 ### Checkpoint: Foundation
-- [ ] Build succeeds with no type errors
-- [ ] Public URL live and rendering
-- [ ] Fonts self-hosted, tokens in place
+- [x] Build succeeds with no type errors
+- [ ] Public URL live and rendering  ← Cloudflare not connected yet
+- [x] Fonts self-hosted, tokens in place
 
 ---
 
@@ -56,14 +56,14 @@ region, and the blinking `▊` cursor. Boot sequence on first paint. Keyboard na
 arrows, `Tab`, `1`–`4`, `?` for help). Panes are deep-linkable through the router.
 
 **Acceptance criteria:**
-- [ ] `/tui` renders the frame with a working boot sequence
-- [ ] Every pane is reachable by keyboard alone, with a visible focus ring in `--primary`
-- [ ] `/tui/resume` deep-links straight to that pane on a cold load
+- [x] `/tui` renders the frame with a working boot sequence
+- [x] Every pane is reachable by keyboard alone, with a visible focus ring in `--primary`
+- [x] `/tui/resume` deep-links straight to that pane on a cold load
 
 **Verification:**
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: unplug the mouse, reach all four panes and return
-- [ ] Manual check: hard-reload `/tui/projects` and confirm it opens on that pane
+- [x] Manual check: unplug the mouse, reach all four panes and return
+- [x] Manual check: hard-reload `/tui/projects` and confirm it opens on that pane
 
 **Dependencies:** Task 1
 
@@ -119,7 +119,7 @@ a print stylesheet that produces a clean single-column A4 page through the brows
 - [ ] `Ctrl+P` produces a legible single-column A4 page
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: print-preview and read the output
 - [ ] Manual check: select-all, copy, paste into a plain text editor — confirm it reads cleanly
 
@@ -146,7 +146,7 @@ clones live in a collapsed archive section.
 - [ ] Archive section is collapsed by default and clearly labelled
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: cross-check three repos' language bars against `gh api repos/subhaneetshrestha/<r>/languages`
 - [ ] Manual check: navigate the full list and back using only the keyboard
 
@@ -173,7 +173,7 @@ is checkable.
 - [ ] Retired entries are visually distinct (`--dead`) and labelled with the reason
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: compare each rendered status against a fresh `curl -o /dev/null -w '%{http_code}' -L <url>`
 - [ ] Manual check: click through every release asset link
 
@@ -199,7 +199,7 @@ Tab-completion for commands and project names, and an unknown-command message in
 - [ ] Commands are defined in a table, not a switch chain — one place to add more
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: run every command in the table
 - [ ] Manual check: press Tab on a partial project name; press up-arrow to recall history
 
@@ -271,7 +271,7 @@ Blinking cursor, scanlines, slight barrel curve. Text must be legible at the lan
 - [ ] Texture updates only when content changes — no per-frame redraw
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: screenshot at 1440px and at 375px, read the text in both
 - [ ] Manual check: DevTools Performance, confirm no texture upload on idle frames
 
@@ -297,7 +297,7 @@ and full WebGL teardown afterwards. `poweroff` reverses the whole thing.
 - [ ] `poweroff` returns to `/` and rebuilds the scene cleanly
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: DevTools Memory — confirm the context is gone post-transition
 - [ ] Manual check: record the seam and step through it frame-by-frame
 - [ ] Manual check: run the dive and `poweroff` five times; confirm no leak or degradation
@@ -325,7 +325,7 @@ timeout escape hatch.
 - [ ] Forcing WebGL off still yields a complete, usable portfolio
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: emulate reduced-motion in DevTools, confirm `three` never appears in Network
 - [ ] Manual check: disable WebGL via browser flags and load `/`
 - [ ] Manual check: throttle to Slow 3G and confirm the timeout escape fires
@@ -362,7 +362,7 @@ behind a button. The landing gets a lighter scene, or skips to the TUI, on low-e
 - [ ] The virtual keyboard never covers the active pane
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: test on a real phone, not only DevTools emulation
 - [ ] Manual check: open the command bar on mobile and confirm the pane stays visible
 
@@ -391,7 +391,7 @@ announcements for pane changes.
 - [ ] Screen reader announces pane changes
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: run Lighthouse on both `/` and `/tui`
 - [ ] Manual check: one full pass with a screen reader
 - [ ] Manual check: contrast-check every token pair with a measuring tool
@@ -419,7 +419,7 @@ sitemap. No analytics — consistent with the privacy stance `smart-wallet` take
 - [ ] No third-party network requests at runtime
 
 **Verification:**
-- [x] Build succeeds: `npm run build`
+- [ ] Build succeeds: `npm run build`
 - [ ] Manual check: paste the live URL into a social card validator
 - [ ] Manual check: DevTools Network filtered to third-party — confirm the list is empty
 
