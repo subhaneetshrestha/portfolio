@@ -9,18 +9,22 @@ const KEY = /^(status|stack):/;
 // Bare URLs (trailing punctuation stays text) and the author's [fill in…] marks.
 const INLINE = /(https?:\/\/[^\s<>()]*[^\s<>().,;:!?]|\[fill in(?::[^\]]*)?\])/g;
 
-const inline = (text: string): ReactNode[] =>
+/** Bare URLs become links and [fill in…] marks a placeholder; the shell reuses it for plain output. */
+export const inline = (text: string): ReactNode[] =>
   text.split(INLINE).map((part, i) => {
     if (i % 2 === 0) return part;
     if (part.startsWith('[')) return <span key={i} className={styles.fill}>{PLACEHOLDER}</span>;
     return <a key={i} href={part}>{part}</a>;
   });
 
-/** Hard-wrapped lines join into one paragraph; a blank line or a status:/stack: line starts the next. */
+/**
+ * Hard-wrapped lines stay in one paragraph; a blank line or a status:/stack: line starts the next.
+ * The break is kept: prose reflows where white-space is normal, and `cat` shows it as written.
+ */
 const paragraphs = (block: string): string[] =>
   block.split('\n').reduce<string[]>((acc, line) => {
     if (KEY.test(line) || acc.length === 0) acc.push(line);
-    else acc[acc.length - 1] += ` ${line}`;
+    else acc[acc.length - 1] += `\n${line}`;
     return acc;
   }, []);
 

@@ -91,6 +91,16 @@ describe('command table', () => {
   });
 });
 
+describe('cat', () => {
+  it('hands a .md file to the markdown sink when there is one, and prints everything else', () => {
+    const c = ctx();
+    const markdown = vi.fn();
+    run('cat ~/resume.md ~/about.txt', { ...c, markdown });
+    expect(markdown).toHaveBeenCalledWith(read(`${HOME}/resume.md`));
+    expect(c.out).toEqual(read(`${HOME}/about.txt`).split('\n'));
+  });
+});
+
 describe('ls', () => {
   it('lists cwd on one line, hiding dotfiles unless -a', () => {
     const c = ctx();

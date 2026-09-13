@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ComponentType } from 'react';
-import { HOST, resume } from '../content/resume';
 import { reducedMotion } from '../lib/prefs';
 import { Link, navigate, useRoute } from '../lib/router';
 import { Boot } from './Boot';
-import { CommandLine } from './CommandLine';
+import { HOME } from './fs';
 import { PANES, paneFromRoute } from './panes';
 import type { PaneId } from './panes';
 import { About } from './panes/About';
 import { Deployments } from './panes/Deployments';
 import { Projects } from './panes/Projects';
 import { Resume } from './panes/Resume';
+import { Terminal, prompt } from './Terminal';
 import styles from './tui.module.css';
 
 const BOOTED_KEY = 'tui.booted';
@@ -20,6 +20,18 @@ const bootedThisSession = () => {
 const rememberBooted = () => {
   try { sessionStorage.setItem(BOOTED_KEY, '1'); } catch { /* private mode: boot replays, harmless */ }
 };
+
+// A keyboard and room for it: the shell. Anything else gets the panes (Task 12 finishes them).
+const DESKTOP = '(min-width: 768px) and (pointer: fine)';
+const useDesktop = () =>
+  useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(DESKTOP);
+      mq.addEventListener('change', cb);
+      return () => mq.removeEventListener('change', cb);
+    },
+    () => window.matchMedia(DESKTOP).matches,
+  );
 
 const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement && t.matches('input, textarea, select, [contenteditable]');
@@ -31,14 +43,16 @@ const VIEWS: Record<PaneId, ComponentType> = {
   deployments: Deployments,
 };
 
-export function Shell({ boot = true }: { boot?: boolean }) {
+export function Shell() {
   const route = useRoute();
   const requested = route.name === 'tui' ? route.pane : null;
   const pane = paneFromRoute(requested);
+  const desktop = useDesktop();
 
-  const [booted, setBooted] = useState(() => !boot || reducedMotion() || bootedThisSession());
+  const [booted, setBooted] = useState(() => reducedMotion() || bootedThisSession());
   const finishBoot = useCallback(() => { rememberBooted(); setBooted(true); }, []);
   const [help, setHelp] = useState(false);
+  const [cwd, setCwd] = useState(HOME);
   const paneRef = useRef<HTMLElement>(null);
   const cmdRef = useRef<HTMLInputElement>(null);
 
@@ -49,6 +63,7 @@ export function Shell({ boot = true }: { boot?: boolean }) {
       if (e.key === 'Escape') return setHelp(false);
       if (e.key === '?') return setHelp((h) => !h);
       if (e.key === ':') { e.preventDefault(); return cmdRef.current?.focus(); }
+      if (desktop) return;
       const jump = PANES.find((p) => p.key === e.key);
       if (jump) return navigate(jump.path);
       const idx = PANES.findIndex((p) => p.id === pane);
@@ -59,7 +74,12 @@ export function Shell({ boot = true }: { boot?: boolean }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [booted, pane]);
+  }, [booted, pane, desktop]);
+
+  // A terminal opens with its prompt ready.
+  useEffect(() => {
+    if (booted && desktop) cmdRef.current?.focus();
+  }, [booted, desktop]);
 
   if (!booted) {
     return (
@@ -70,58 +90,90 @@ export function Shell({ boot = true }: { boot?: boolean }) {
   }
 
   const View = pane ? VIEWS[pane] : null;
+  // The deep link's command; an unknown pane fails the way a wrong path does.
+  const initial = pane ? PANES.find((p) => p.id === pane)!.cmd : `cd ~/${requested}`;
 
   return (
     <div className={styles.shell}>
       <header className={styles.titlebar}>
-        <span className={styles.path}>{resume.profile.handle}@{HOST}:~{pane && pane !== 'about' ? `/${pane}` : ''}</span>
-        <nav aria-label="panes" className={styles.tabs}>
-          {PANES.map((p) => (
-            <Link key={p.id} to={p.path} aria-current={p.id === pane ? 'page' : undefined}>
-              <span className={styles.key} aria-hidden="true">{p.key}</span>
-              {p.id}
-            </Link>
-          ))}
-        </nav>
+        <span className={styles.path}>{prompt(cwd).slice(0, -1) /* the prompt without its $ */}</span>
+        {!desktop && (
+          <nav aria-label="panes" className={styles.tabs}>
+            {PANES.map((p) => (
+              <Link key={p.id} to={p.path} aria-current={p.id === pane ? 'page' : undefined}>
+                <span className={styles.key} aria-hidden="true">{p.key}</span>
+                {p.id}
+              </Link>
+            ))}
+          </nav>
+        )}
       </header>
 
-      <main className={styles.pane} ref={paneRef}>
-        {View ? (
-          <View />
-        ) : (
-          <>
-            <h1>tui: no such pane: {requested}</h1>
-            <p className="muted">panes: {PANES.map((p) => p.id).join(', ')}</p>
-          </>
-        )}
-      </main>
-
-      <CommandLine ref={cmdRef} />
+      {desktop ? (
+        <main className={styles.screen}>
+          <Terminal initial={initial} onCwd={setCwd} ref={cmdRef} />
+        </main>
+      ) : (
+        <>
+          <main className={styles.pane} ref={paneRef}>
+            {View ? (
+              <View />
+            ) : (
+              <>
+                <h1>tui: no such pane: {requested}</h1>
+                <p className="muted">panes: {PANES.map((p) => p.id).join(', ')}</p>
+              </>
+            )}
+          </main>
+          <div className={styles.cmd}>
+            <Terminal onCwd={setCwd} ref={cmdRef} />
+          </div>
+        </>
+      )}
 
       <footer className={styles.statusline}>
-        <span>{pane ?? 'error'}</span>
+        {!desktop && <span>{pane ?? 'error'}</span>}
         <button type="button" className={styles.hint} onClick={() => setHelp(true)}>?:help</button>
-        <span className={styles.hint}>h/l:switch · 1-4:jump · j/k:scroll</span>
+        <span className={styles.hint}>
+          {desktop ? 'tab:complete · ↑↓:history · ctrl+l:clear · esc:leave prompt' : 'h/l:switch · 1-4:jump · j/k:scroll'}
+        </span>
       </footer>
 
-      {help && <Help onClose={() => setHelp(false)} />}
+      {help && <Help shell={desktop} onClose={() => setHelp(false)} />}
     </div>
   );
 }
 
+const SHELL_KEYS = [
+  ['enter', 'run the line'],
+  ['tab', 'complete a command or path'],
+  ['↑ ↓', 'history'],
+  ['ctrl+l', 'clear the screen'],
+  ['ctrl+c', 'cancel the line'],
+  ['ctrl+u', 'clear the line'],
+  ['esc', 'leave the prompt'],
+  [':', 'back to the prompt'],
+  ['?', 'toggle this help, outside the prompt'],
+];
+const PANE_KEYS = [
+  ['1-4', 'jump to pane'],
+  ['h l ← →', 'switch pane'],
+  ['j k ↑ ↓', 'scroll'],
+  [':', 'command line'],
+  ['tab', 'move focus · in the prompt: complete'],
+  ['?', 'toggle this help'],
+  ['esc', 'close'],
+];
+
 // ponytail: non-modal <dialog open> + manual Escape. Task 13 decides whether
 // the focus trap of showModal() is worth its jsdom/polyfill cost.
-function Help({ onClose }: { onClose: () => void }) {
+function Help({ shell, onClose }: { shell: boolean; onClose: () => void }) {
   return (
     <dialog open aria-label="keyboard help" className={styles.help}>
       <dl>
-        <dt>1-4</dt><dd>jump to pane</dd>
-        <dt>h l ← →</dt><dd>switch pane</dd>
-        <dt>j k ↑ ↓</dt><dd>scroll</dd>
-        <dt>:</dt><dd>command line</dd>
-        <dt>tab</dt><dd>move focus (browser-native)</dd>
-        <dt>?</dt><dd>toggle this help</dd>
-        <dt>esc</dt><dd>close</dd>
+        {(shell ? SHELL_KEYS : PANE_KEYS).map(([key, what]) => (
+          <div key={key}><dt>{key}</dt><dd>{what}</dd></div>
+        ))}
       </dl>
       <button type="button" autoFocus onClick={onClose}>close</button>
     </dialog>

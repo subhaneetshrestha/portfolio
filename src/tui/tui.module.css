@@ -60,12 +60,8 @@ button.hint:focus-visible { outline: 2px solid var(--primary); outline-offset: 2
   background: var(--bg);
   border: 1px solid var(--primary);
 }
-.help dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 2ch;
-  margin: 0 0 1rem;
-}
+.help dl { display: grid; gap: 0.25rem; margin: 0 0 1rem; }
+.help dl > div { display: grid; grid-template-columns: 9ch 1fr; gap: 2ch; }
 .help dt { color: var(--accent); }
 .help dd { margin: 0; }
 .help button {
@@ -78,20 +74,24 @@ button.hint:focus-visible { outline: 2px solid var(--primary); outline-offset: 2
 }
 .help button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-.cmd {
-  border-top: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+.screen { display: grid; min-height: 0; } /* desktop: the terminal is the whole 1fr row */
+.cmd { border-top: 1px solid color-mix(in srgb, var(--fg) 15%, transparent); } /* touch: a slot under the pane */
+.cmd .log { max-height: 30dvh; }
+
+.terminal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 0;
   padding: 0.5rem 1ch;
 }
-.log {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 30dvh;
-  overflow: auto;
-}
+.log { flex: 1; min-height: 0; overflow: auto; }
+.log:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.log ol { list-style: none; margin: 0; padding: 0; }
 .log li { margin: 0 0 0.25rem; }
 .log pre { margin: 0; font: inherit; white-space: pre-wrap; color: var(--muted-fg); }
-.echo { color: var(--fg); }
+.log .md p { white-space: pre-wrap; } /* cat shows the file as written */
+.echo { display: block; color: var(--fg); }
 .prompt { display: flex; gap: 1ch; align-items: baseline; }
 .prompt label { color: var(--primary); white-space: nowrap; }
 .prompt input {

@@ -12,6 +12,8 @@ export type Ctx = {
   setCwd(path: string): void;
   fs: typeof vfs;
   print(lines: string | string[]): void;
+  /** Where a host can render it, `cat` sends a .md file here instead of print. */
+  markdown?(text: string): void;
   clear(): void;
   navigate(to: string): void;
   openUrl(url: string): void;
@@ -95,7 +97,10 @@ export const TABLE: Command[] = [
       if (!args.length) return ctx.print('usage: cat <path…>');
       for (const name of args) {
         try {
-          ctx.print(ctx.fs.read(ctx.fs.resolve(ctx.cwd, name), name).split('\n'));
+          const path = ctx.fs.resolve(ctx.cwd, name);
+          const text = ctx.fs.read(path, name);
+          if (ctx.markdown && path.endsWith('.md')) ctx.markdown(text);
+          else ctx.print(text.split('\n'));
         } catch (e) {
           ctx.print(message(e));
         }

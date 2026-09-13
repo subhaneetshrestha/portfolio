@@ -1,8 +1,9 @@
 import { vi } from 'vitest';
 
-export function stubMatchMedia(matches: boolean) {
+/** One answer for every media query, or a function that answers per query. */
+export function stubMatchMedia(matches: boolean | ((query: string) => boolean)) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches,
+    matches: typeof matches === 'function' ? matches(query) : matches,
     media: query,
     onchange: null,
     addEventListener: vi.fn(),
