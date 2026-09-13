@@ -1,0 +1,20 @@
+/* Source of truth for every color and size on the site. Components use
+   var(--x); a raw hex anywhere else fails tests/no-raw-hex.test.ts. */
+:root {
+  color-scheme: dark;
+
+  --bg: #0B0D10;
+  --fg: #C9D1D9;
+  --primary: #00ADD8;   /* Go brand cyan */
+  --accent: #FFB454;    /* CRT phosphor amber */
+  --secondary: #1793D1; /* Arch blue */
+  --ok: #3FB950;
+  --dead: #6E7681;
+  --muted-fg: #8B949E;
+
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Strict sizes: 12 / 14 / 16. No in-between. */
+  --text-sm: 12px;
+  --text-md: 14px;
+  --text-lg: 16px;
+}
