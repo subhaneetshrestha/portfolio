@@ -40,10 +40,10 @@
   cursor: pointer;
   white-space: pre;
 }
-.item::before { content: '  '; color: var(--accent); }
+.item::before { content: '  ' / ''; color: var(--accent); }
 .item:hover { text-decoration: underline; text-underline-offset: 0.3em; }
 .item[aria-current='true'] { color: var(--accent); }
-.item[aria-current='true']::before { content: '> '; }
+.item[aria-current='true']::before { content: '> ' / ''; }
 
 .detail h2 {
   font-size: var(--text-lg);

@@ -1,6 +1,7 @@
 import { deployments } from '../../content/deployments';
 import { github } from '../../content/github';
 import type { Deployment, GithubData } from '../../content/types';
+import { relativeTime } from '../../lib/time';
 import styles from './Deployments.module.css';
 
 // Every status, tag, asset and timestamp here comes from github.generated.json.
@@ -15,15 +16,13 @@ const codeText = (code: number | undefined) => (code === undefined ? 'unchecked'
 const size = (bytes: number) =>
   bytes >= 1 << 20 ? `${(bytes / (1 << 20)).toFixed(1)} MiB` : `${(bytes / 1024).toFixed(1)} KiB`;
 
-const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-function ago(iso: string) {
-  const s = (new Date(iso).getTime() - Date.now()) / 1000;
-  const [n, unit] =
-    Math.abs(s) < 3600 ? ([s / 60, 'minute'] as const)
-    : Math.abs(s) < 86400 ? ([s / 3600, 'hour'] as const)
-    : ([s / 86400, 'day'] as const);
-  return rtf.format(Math.round(n), unit);
-}
+/** Label plus the curated note from deployments.ts, when there is one. */
+const Label = ({ d }: { d: Deployment }) => (
+  <>
+    {d.label}
+    {d.note && <span className="muted"> — {d.note}</span>}
+  </>
+);
 
 /** Dot plus the literal code. The dot is decoration; the code is the signal. */
 function Status({ code }: { code: number | undefined }) {
@@ -56,11 +55,11 @@ export function Deployments({ entries = deployments, data = github }: Props) {
         <tbody>
           {of('live').map((d) => (
             <tr key={d.id} data-status={state(code(d))}>
-              <td>{d.label}</td>
+              <td><Label d={d} /></td>
               <td><Status code={code(d)} /></td>
               <td>
                 {d.url && (
-                  <a href={d.url} target="_blank" rel="noopener">
+                  <a href={d.url} rel="noopener">
                     {d.url.replace(/^https?:\/\//, '').replace(/\/$/, '')} <span aria-hidden="true">↗</span>
                   </a>
                 )}
@@ -81,21 +80,32 @@ export function Deployments({ entries = deployments, data = github }: Props) {
             const latest = repo?.releases?.[0];
             return (
               <tr key={d.id}>
-                <td>{d.label}</td>
-                <td>{latest ? <><span aria-hidden="true" className={styles.down}>▼</span> {latest.tag}</> : <span className="muted">—</span>}</td>
+                <td><Label d={d} /></td>
                 <td>
                   {latest ? (
+                    <>
+                      <span aria-hidden="true" className={styles.down}>▼</span> {latest.tag}
+                      {latest.prerelease && <> <span className="muted">pre-release</span></>}
+                    </>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </td>
+                <td>
+                  {!repo ? (
+                    <span className="muted">repository not public</span>
+                  ) : !latest ? (
+                    <a href={`${repo.url}/releases`}>no release published yet</a>
+                  ) : latest.assets.length === 0 ? (
+                    <a href={`${repo.url}/releases`}>no files attached</a>
+                  ) : (
                     <ul className={styles.assets}>
                       {latest.assets.map((a) => (
                         <li key={a.url}>
-                          <a href={a.url} download>{a.name} <span className="muted">{size(a.size)}</span></a>
+                          <a href={a.url}>{a.name} <span className="muted">{size(a.size)}</span></a>
                         </li>
                       ))}
                     </ul>
-                  ) : repo ? (
-                    <a href={`${repo.url}/releases`}>no signed build published yet</a>
-                  ) : (
-                    <span className="muted">no signed build published yet</span>
                   )}
                 </td>
               </tr>
@@ -120,7 +130,7 @@ export function Deployments({ entries = deployments, data = github }: Props) {
         </tbody>
       </table>
 
-      <p className={styles.checked}>statuses checked {ago(data.checkedAt)}</p>
+      <p className={styles.checked}>statuses checked {relativeTime(data.checkedAt)}</p>
     </>
   );
 }

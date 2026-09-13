@@ -1,6 +1,5 @@
 /* Shared by About and Resume: both render the profile in resume.ts. */
 .prompt { color: var(--primary); margin: 0 0 1rem; }
-.prompt::after { content: ' ▊'; color: var(--accent); }
 
 .doc p, .doc ul, .doc dl { margin: 0; }
 .doc h2 {
@@ -9,7 +8,7 @@
   color: var(--primary);
   margin: 1.5rem 0 0.5rem;
 }
-.doc h2::before { content: '## '; color: var(--muted-fg); }
+.doc h2::before { content: '## ' / ''; color: var(--muted-fg); }
 .doc h3 { font-size: var(--text-md); font-weight: 400; margin: 0.75rem 0 0; }
 .doc ul { padding-left: 2ch; }
 .doc li { margin: 0.15rem 0; }
@@ -35,5 +34,6 @@
   padding: 0.25rem 1ch;
   cursor: pointer;
 }
-.actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 3px offset keeps the ring apart from the button's own --primary border. */
+.actions button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .actions [role='status'] { color: var(--muted-fg); font-size: var(--text-sm); }

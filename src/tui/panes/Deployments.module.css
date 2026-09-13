@@ -24,7 +24,7 @@
 .dot[data-status='dead'] { color: var(--dead); }
 .down { color: var(--accent); }
 
-.retired td { color: var(--dead); }
+.retired td { color: var(--muted-fg); }
 
 .assets {
   list-style: none;
@@ -34,7 +34,7 @@
   flex-wrap: wrap;
   gap: 0 1ch;
 }
-.assets li + li::before { content: '/ '; color: var(--muted-fg); }
+.assets li + li::before { content: '/ ' / ''; color: var(--muted-fg); }
 
 .checked {
   color: var(--muted-fg);

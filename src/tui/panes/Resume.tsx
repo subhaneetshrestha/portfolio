@@ -10,7 +10,7 @@ const { profile, experience, education, skills } = resume;
 const email = profile.links.find((l) => l.url.startsWith('mailto:'));
 
 const field = (v: string | Todo) =>
-  v === TODO ? <span className={s.todo} aria-label="to be filled">{PLACEHOLDER}</span> : v;
+  v === TODO ? <span className={s.todo}>{PLACEHOLDER}</span> : v;
 const text = (v: string | Todo) => (v === TODO ? PLACEHOLDER : v);
 
 // Same data, no markup: what "copy as text" puts on the clipboard.

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { resume } from '../../content/resume';
 import { TODO } from '../../content/types';
@@ -24,7 +25,8 @@ describe('Resume pane', () => {
     // The data still carries TODOs; this test is only meaningful while it does.
     expect(resume.experience[0]!.start).toBe(TODO);
     render(<Resume />);
-    expect(screen.getAllByLabelText('to be filled').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('[to be filled]').length).toBeGreaterThan(0);
+    expect(screen.queryAllByLabelText('to be filled')).toHaveLength(0);
     expect(document.body.textContent).not.toContain('TODO');
   });
 
@@ -62,6 +64,19 @@ describe('Resume pane', () => {
     render(<Resume />);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /copy as text/i })); });
     expect(screen.getByRole('status').textContent).toMatch(/clipboard/i);
+  });
+
+  it('print hides the shell chrome and the command form', () => {
+    const css = readFileSync('src/styles/print.css', 'utf8');
+    const hidden = css.split('\n').find((line) => line.includes('display: none')) ?? '';
+    for (const sel of ['header', 'footer', 'dialog', 'form', 'button']) expect(hidden).toMatch(new RegExp(`\\b${sel}\\b`));
+  });
+
+  it('draws focus rings in --primary and puts no cursor after an executed prompt line', () => {
+    const css = readFileSync('src/tui/panes/resume.module.css', 'utf8');
+    expect(css).not.toMatch(/focus-visible\s*\{[^}]*var\(--accent\)/);
+    expect(css).toMatch(/focus-visible\s*\{[^}]*var\(--primary\)/);
+    expect(css).not.toMatch(/\.prompt::after/);
   });
 
   it('print / save as pdf calls window.print', () => {

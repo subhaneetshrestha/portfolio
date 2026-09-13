@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { projects } from '../../content/projects';
 import type { Project } from '../../content/types';
+import { relativeTime } from '../../lib/time';
 import styles from './Projects.module.css';
 
 const ALL = projects();
@@ -43,16 +44,6 @@ function LangBar({ languages }: { languages: Record<string, number> }) {
       <span>{share.slice(0, 3).map((s) => `${s.name} ${Math.round(s.pct)}%`).join(' · ')}</span>
     </div>
   );
-}
-
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['year', 31_536_000], ['month', 2_592_000], ['week', 604_800], ['day', 86_400], ['hour', 3600], ['minute', 60],
-];
-const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-function ago(iso: string) {
-  const s = (new Date(iso).getTime() - Date.now()) / 1000;
-  const unit = UNITS.find(([, secs]) => Math.abs(s) >= secs);
-  return unit ? rtf.format(Math.round(s / unit[1]), unit[0]) : 'just now';
 }
 
 const bare = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -146,7 +137,7 @@ export function Projects({ list = ALL }: { list?: Project[] }) {
           {langs ? <LangBar languages={langs} /> : <p className="muted">no language data</p>}
           {excerpt && <blockquote cite={current.url}>{excerpt}</blockquote>}
           <p className="muted">
-            pushed {ago(current.pushedAt)} · created {current.createdAt.slice(0, 4)}
+            pushed {relativeTime(current.pushedAt)} · created {current.createdAt.slice(0, 4)}
           </p>
           <p>
             <a href={current.url}>{bare(current.url)}</a>
