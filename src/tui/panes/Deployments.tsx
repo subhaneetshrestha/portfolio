@@ -11,7 +11,7 @@ import styles from './Deployments.module.css';
 const state = (code: number | undefined) => (code !== undefined && code >= 200 && code < 400 ? 'ok' : 'dead');
 
 /** 0 in the liveness map means the request never completed; absent means it was never checked. */
-const codeText = (code: number | undefined) => (code === undefined ? 'unchecked' : code === 0 ? 'no response' : String(code));
+export const codeText = (code: number | undefined) => (code === undefined ? 'unchecked' : code === 0 ? 'no response' : String(code));
 
 const size = (bytes: number) =>
   bytes >= 1 << 20 ? `${(bytes / (1 << 20)).toFixed(1)} MiB` : `${(bytes / 1024).toFixed(1)} KiB`;

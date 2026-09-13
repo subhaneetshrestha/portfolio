@@ -1,41 +1,16 @@
 import { useState } from 'react';
 import { resume } from '../../content/resume';
+import { PLACEHOLDER, resumeText } from '../../content/resumeText';
 import { TODO } from '../../content/types';
 import type { Todo } from '../../content/types';
 import '../../styles/print.css';
 import s from './resume.module.css';
 
-const PLACEHOLDER = '[to be filled]';
 const { profile, experience, education, skills } = resume;
 const email = profile.links.find((l) => l.url.startsWith('mailto:'));
 
 const field = (v: string | Todo) =>
   v === TODO ? <span className={s.todo}>{PLACEHOLDER}</span> : v;
-const text = (v: string | Todo) => (v === TODO ? PLACEHOLDER : v);
-
-// Same data, no markup: what "copy as text" puts on the clipboard.
-function asText(): string {
-  const lines = [
-    profile.name,
-    `${profile.title} · ${profile.location}`,
-    email ? email.url.replace('mailto:', '') : PLACEHOLDER,
-    '',
-    profile.summary,
-    '',
-    'EXPERIENCE',
-    ...experience.flatMap((r) => [
-      `${r.company} — ${r.title} (${text(r.start)} – ${r.end})`,
-      ...r.bullets.map((b) => `  - ${text(b)}`),
-    ]),
-    '',
-    'EDUCATION',
-    ...education.map((e) => `${text(e.school)} — ${text(e.degree)} (${text(e.start)} – ${text(e.end)})`),
-    '',
-    'SKILLS',
-    ...skills.map((g) => `${g.name}: ${g.items.join(', ')}`),
-  ];
-  return lines.join('\n');
-}
 
 export function Resume() {
   const [status, setStatus] = useState('');
@@ -45,7 +20,7 @@ export function Resume() {
       return setStatus('clipboard unavailable here; select the text and copy instead');
     }
     try {
-      await navigator.clipboard.writeText(asText());
+      await navigator.clipboard.writeText(resumeText());
       setStatus('copied');
     } catch {
       setStatus('copy refused by the browser; select the text and copy instead');
