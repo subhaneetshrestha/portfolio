@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent, Ref } from 'react';
-import { deployments } from '../content/deployments';
-import { projects } from '../content/projects';
 import { PROMPT } from '../content/resume';
 import { navigate } from '../lib/router';
 import { complete, run } from './commands';
+import * as fs from './fs';
+import { HOME } from './fs';
 import styles from './tui.module.css';
 
-const ALL = projects();
 const CAP = 50;
 
 type Entry = { input: string; output: string[] };
@@ -16,6 +15,7 @@ export function CommandLine({ ref }: { ref?: Ref<HTMLInputElement> }) {
   const [log, setLog] = useState<Entry[]>([]);
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
+  const [cwd, setCwd] = useState(HOME);
   const [cursor, setCursor] = useState(0); // 0 = live input, n = history[length - n]
   const draft = useRef(''); // what was typed at the live line before ArrowUp left it
   const logRef = useRef<HTMLUListElement>(null);
@@ -33,11 +33,15 @@ export function CommandLine({ ref }: { ref?: Ref<HTMLInputElement> }) {
     const output: string[] = [];
     let cleared = false;
     run(input, {
-      navigate,
-      print: (line) => output.push(line),
+      cwd,
+      setCwd,
+      fs,
+      print: (lines) => output.push(...[lines].flat()),
       clear: () => { cleared = true; },
-      projects: ALL,
-      deployments,
+      navigate,
+      openUrl: (url) => window.open(url, '_blank', 'noopener'),
+      history,
+      now: new Date(),
     });
     if (cleared) setLog([]);
     else append({ input, output });
@@ -55,11 +59,11 @@ export function CommandLine({ ref }: { ref?: Ref<HTMLInputElement> }) {
       setCursor(next);
       setValue(next === 0 ? draft.current : history[history.length - next]!);
     } else if (e.key === 'Tab' && !e.shiftKey) {
-      const found = complete(value, { projects: ALL, deployments });
-      if (found.length === 0) return;
+      const { replacement, candidates } = complete(value, { cwd, fs });
+      if (candidates.length === 0) return;
       e.preventDefault();
-      if (found.length === 1) setValue(value.replace(/\S*$/, found[0]!) + ' ');
-      else append({ input: value, output: [found.join('  ')] });
+      if (replacement) setValue(replacement);
+      else append({ input: value, output: [candidates.join('  ')] });
     } else if (e.key === 'Escape') {
       e.currentTarget.blur();
     }

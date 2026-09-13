@@ -149,12 +149,15 @@ describe('contents', () => {
     }
   });
 
-  it('.bashrc carries the prompt and the four aliases', () => {
+  it('.bashrc carries the prompt and the aliases, one per old pane name', () => {
     const rc = read(`${HOME}/.bashrc`);
     expect(rc).toContain(PROMPT);
     expect(rc).toContain("alias ll='ls -l'");
     expect(rc).toContain("alias la='ls -a'");
     expect(rc).toContain("alias resume='cat ~/resume.md'");
     expect(rc).toContain("alias projects='ls ~/projects'");
+    expect(rc).toContain("alias about='cat ~/about.txt'");
+    expect(rc).toContain("alias deployments='cat ~/deployments/live.txt'");
+    expect(rc).toContain("alias contact='cat ~/contact.txt'");
   });
 });

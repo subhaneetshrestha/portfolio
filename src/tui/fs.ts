@@ -85,6 +85,9 @@ const bashrc = [
   "alias la='ls -a'",
   "alias resume='cat ~/resume.md'",
   "alias projects='ls ~/projects'",
+  "alias about='cat ~/about.txt'",
+  "alias deployments='cat ~/deployments/live.txt'",
+  "alias contact='cat ~/contact.txt'",
 ].join('\n');
 
 const files: Record<string, string> = {

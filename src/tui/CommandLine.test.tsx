@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { PROMPT } from '../content/resume';
+import { PROMPT, resume } from '../content/resume';
 import { CommandLine } from './CommandLine';
 
 const at = (path: string) => window.history.replaceState(null, '', path);
@@ -23,8 +23,25 @@ describe('CommandLine', () => {
   it('runs the command on Enter and clears the input', () => {
     render(<CommandLine />);
     enter('resume');
-    expect(window.location.pathname).toBe('/tui/resume');
+    expect(screen.getByRole('log').textContent).toContain(resume.profile.name);
+    expect(window.location.pathname).toBe('/tui');
     expect(input().value).toBe('');
+  });
+
+  it('cd changes where relative paths resolve', () => {
+    render(<CommandLine />);
+    enter('cd projects');
+    enter('cat README.md');
+    expect(screen.getByRole('log').textContent).toContain('# projects');
+  });
+
+  it('open goes through a new tab, never the router', () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<CommandLine />);
+    enter('open https://example.com/');
+    expect(open).toHaveBeenCalledWith('https://example.com/', '_blank', 'noopener');
+    expect(window.location.pathname).toBe('/tui');
+    open.mockRestore();
   });
 
   it('logs what was typed and what came back in a live region', () => {
@@ -100,9 +117,9 @@ describe('CommandLine', () => {
 
   it('Tab completes a single match in place', () => {
     render(<CommandLine />);
-    type('dep');
+    type('cat re');
     expect(fireEvent.keyDown(input(), { key: 'Tab' })).toBe(false);
-    expect(input().value).toBe('deployments ');
+    expect(input().value).toBe('cat resume.md ');
   });
 
   it('Tab lists several matches in the log and leaves the input alone', () => {
