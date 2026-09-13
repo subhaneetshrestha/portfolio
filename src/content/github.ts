@@ -26,7 +26,6 @@ const isRepo = (r: unknown): r is Repo =>
   str(r.name) && strOrNull(r.description) && strOrNull(r.homepage) && str(r.url) &&
   str(r.createdAt) && str(r.pushedAt) && num(r.stars) && every(r.topics, str) && bool(r.archived) &&
   (r.languages === null || (isObj(r.languages) && Object.values(r.languages).every(num))) &&
-  strOrNull(r.readme) &&
   (r.releases === null || every(r.releases, isRelease));
 
 export function validate(raw: unknown): GithubData {

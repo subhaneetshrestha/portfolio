@@ -41,11 +41,11 @@ export const TABLE: Command[] = [
     summary: 'a project id opens the projects pane; a deployment id opens its url',
     run(ctx, [id]) {
       if (!id) return ctx.print('usage: open <id>');
-      if (ctx.projects.some((p) => p.name === id)) return ctx.navigate(paneOf('projects'));
+      if (ctx.projects.some((p) => p.id === id)) return ctx.navigate(paneOf('projects'));
       const dep = ctx.deployments.find((d) => d.id === id);
       // Releases carry no url of their own; the repo's releases page is the checkable one.
-      const repo = ctx.projects.find((p) => p.name === dep?.repo);
-      const url = dep?.url ?? (repo && `${repo.url}/releases`);
+      const repo = ctx.projects.find((p) => p.id === dep?.repo);
+      const url = dep?.url ?? (repo?.repoUrl && `${repo.repoUrl}/releases`);
       if (!url) return ctx.print(`open: ${id}: no such project or deployment.`);
       window.open(url, '_blank', 'noopener');
     },
@@ -80,7 +80,7 @@ export function complete(line: string, ctx: Pick<Ctx, 'projects' | 'deployments'
   const last = parts[parts.length - 1] ?? '';
   const pool =
     parts.length === 1 ? TABLE.map((c) => c.name)
-    : parts[0] === 'open' && parts.length === 2 ? [...ctx.projects.map((p) => p.name), ...ctx.deployments.map((d) => d.id)]
+    : parts[0] === 'open' && parts.length === 2 ? [...ctx.projects.map((p) => p.id), ...ctx.deployments.map((d) => d.id)]
     : [];
   return [...new Set(pool)].filter((w) => w.startsWith(last));
 }

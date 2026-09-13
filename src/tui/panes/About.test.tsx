@@ -35,7 +35,7 @@ describe('About pane', () => {
 
   it('lists the featured project names, each linking to /tui/projects', () => {
     render(<About />);
-    const featured = projects().filter((p) => p.featured).map((p) => p.name);
+    const featured = projects().map((p) => p.id);
     expect(featured.length).toBeGreaterThan(0);
     const featuredLine = screen.getByText(/^featured:/);
     const links = within(featuredLine).getAllByRole('link');

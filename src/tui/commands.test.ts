@@ -15,7 +15,6 @@ const repo = (name: string): Repo => ({
   topics: [],
   archived: false,
   languages: null,
-  readme: null,
   releases: null,
 });
 

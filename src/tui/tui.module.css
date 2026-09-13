@@ -105,3 +105,15 @@ button.hint:focus-visible { outline: 2px solid var(--primary); outline-offset: 2
   padding: 0;
 }
 .prompt input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Markdown-lite (markdown.tsx): curated READMEs on the projects pane and under `cat`. */
+.md h2 {
+  font-size: var(--text-md);
+  font-weight: 400;
+  color: var(--primary);
+  margin: 0 0 0.5rem;
+}
+.md h2::before { content: '# ' / ''; color: var(--muted-fg); }
+.md p { margin: 0 0 0.75rem; }
+.mdKey { color: var(--accent); }
+.fill { color: var(--accent); }

@@ -5,7 +5,7 @@ import { Link } from '../../lib/router';
 import s from './resume.module.css';
 
 const { profile } = resume;
-const featured = projects().filter((p) => p.featured);
+const featured = projects();
 
 export function About() {
   return (
@@ -28,11 +28,11 @@ export function About() {
       <p>
         featured:{' '}
         {featured.length === 0
-          ? <span className={s.meta}>no featured projects in the data</span>
+          ? <span className={s.meta}>nothing featured yet.</span>
           : featured.map((p, i) => (
-              <Fragment key={p.name}>
+              <Fragment key={p.id}>
                 {i > 0 && ', '}
-                <Link to="/tui/projects">{p.name}</Link>
+                <Link to="/tui/projects">{p.id}</Link>
               </Fragment>
             ))}
       </p>

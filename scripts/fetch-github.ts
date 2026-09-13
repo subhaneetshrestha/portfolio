@@ -12,42 +12,8 @@ const USER = 'subhaneetshrestha';
 const API = 'https://api.github.com';
 const JSON_ACCEPT = 'application/vnd.github+json';
 const OUT = new URL('../src/content/github.generated.json', import.meta.url);
-const EXCERPT_MAX = 300;
 
 // ---- pure helpers (unit-tested in tests/fetch-github.test.ts) ----
-
-const isNoise = (line: string) => /^(!\[|\[!\[|<|#|\||[-*_]{3,}\s*$)/.test(line);
-
-const stripMarkdown = (s: string) =>
-  s
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]+>/g, '')
-    .replace(/(\*\*|__)(.*?)\1/g, '$2')
-    .replace(/(\*|_)(.*?)\1/g, '$2')
-    .replace(/`([^`]*)`/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-/** First prose paragraph after the H1 (or the first one at all), markdown stripped, ≤300 chars. */
-export function readmeExcerpt(md: string): string | null {
-  const lines = md.replace(/```[\s\S]*?```/g, '').split(/\r?\n/);
-  const h1 = lines.findIndex((l) => /^#\s/.test(l));
-  const body = lines.slice(h1 + 1);
-  const paragraphs: string[][] = [[]];
-  for (const line of body) {
-    if (line.trim() === '') { if (paragraphs.at(-1)!.length) paragraphs.push([]); continue; }
-    if (isNoise(line.trim())) continue;
-    paragraphs.at(-1)!.push(line.trim());
-  }
-  const first = paragraphs.find((p) => p.length > 0);
-  if (!first) return null;
-  const text = stripMarkdown(first.join(' '));
-  if (!text) return null;
-  if (text.length <= EXCERPT_MAX) return text;
-  const cut = text.slice(0, EXCERPT_MAX - 1);
-  return cut.slice(0, cut.lastIndexOf(' ')).trimEnd() + '…';
-}
 
 /** Recursively sorts object keys so the committed JSON diffs cleanly. Arrays keep their order. */
 export function sortKeys<T>(v: T): T {
@@ -101,7 +67,7 @@ const token = () => {
 
 async function main() {
   const auth = token();
-  if (!auth) warn('no GITHUB_TOKEN and gh is not logged in: unauthenticated, 60 requests/hour; this run needs about 60');
+  if (!auth) warn('no GITHUB_TOKEN and gh is not logged in: unauthenticated, 60 requests/hour; two per repo plus the listing');
   const headers: Record<string, string> = {
     Accept: JSON_ACCEPT,
     'X-GitHub-Api-Version': '2022-11-28',
@@ -111,9 +77,9 @@ async function main() {
 
   /** GET one API path. 404 is data (null). Any other non-200 is a failure: recorded, still null, and fails the run at the end. */
   const failed: string[] = [];
-  const get = async (path: string, accept = JSON_ACCEPT): Promise<unknown> => {
-    const res = await fetch(`${API}${path}`, { headers: { ...headers, Accept: accept } });
-    if (res.status === 200) return accept.includes('raw') ? res.text() : res.json();
+  const get = async (path: string): Promise<unknown> => {
+    const res = await fetch(`${API}${path}`, { headers });
+    if (res.status === 200) return res.json();
     if (res.headers.get('x-ratelimit-remaining') === '0') {
       const reset = new Date(Number(res.headers.get('x-ratelimit-reset')) * 1000).toISOString();
       throw new Error(`GitHub rate limit exhausted; resets at ${reset}. Set GITHUB_TOKEN or log in with gh.`);
@@ -139,9 +105,8 @@ async function main() {
 
   const repos: Repo[] = [];
   for (const r of own) {
-    const [languages, readme, releases] = await Promise.all([
+    const [languages, releases] = await Promise.all([
       get(`/repos/${USER}/${r.name}/languages`) as Promise<Record<string, number> | null>,
-      get(`/repos/${USER}/${r.name}/readme`, 'application/vnd.github.raw+json') as Promise<string | null>,
       get(`/repos/${USER}/${r.name}/releases`) as Promise<RawRelease[] | null>,
     ]);
     repos.push({
@@ -155,7 +120,6 @@ async function main() {
       topics: r.topics ?? [],
       archived: r.archived,
       languages,
-      readme: readme === null ? null : readmeExcerpt(readme),
       releases: releases === null ? null : releasesOf(releases),
     });
     process.stdout.write('.');

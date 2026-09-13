@@ -14,7 +14,6 @@ const repo = (name: string, over: Partial<Repo> = {}): Repo => ({
   topics: [],
   archived: false,
   languages: null,
-  readme: null,
   releases: null,
   ...over,
 });

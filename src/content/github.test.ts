@@ -11,7 +11,6 @@ const repo = {
   topics: [],
   archived: false,
   languages: { Go: 10 },
-  readme: null,
   releases: [],
 };
 const ok = { fetchedAt: '2026-09-13T00:00:00Z', checkedAt: '2026-09-13T00:00:00Z', liveness: {}, repos: [repo] };

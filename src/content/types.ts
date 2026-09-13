@@ -61,7 +61,6 @@ export type Repo = {
   topics: string[];
   archived: boolean;
   languages: Record<string, number> | null;
-  readme: string | null;
   releases: Release[] | null;
 };
 
@@ -73,8 +72,14 @@ export type GithubData = {
   repos: Repo[];
 };
 
-/** A repo joined with curation. `archived` here is the curated rule OR the GitHub flag. */
-export type Project = Repo & { featured: boolean; archived: boolean };
+/** A curated README from src/content/projects/<id>.md joined with the public facts about its repo, when the repo is public. */
+export type Project = {
+  id: string;
+  markdown: string;
+  repoUrl: string | null;
+  pushedAt: string | null;
+  releases: Release[];
+};
 
 export type Deployment = {
   id: string;

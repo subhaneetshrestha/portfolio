@@ -12,48 +12,34 @@ const repo = (name: string, over: Partial<Repo> = {}): Repo => ({
   topics: [],
   archived: false,
   languages: null,
-  readme: null,
   releases: null,
   ...over,
 });
 
-const names = (list: { name: string }[]) => list.map((p) => p.name);
+const CURATED = [
+  'atomic-launcher', 'space-z', 'nepse-analyzer', 'karya', 'flavique', 'smart-wallet', 'footy-manager', 'footy-stonks',
+];
 
 describe('projects', () => {
-  it('puts featured repos first in curated order, regardless of push date', () => {
-    const out = projects([
-      repo('space-z', { pushedAt: '2026-09-01T00:00:00Z' }),
-      repo('zzz', { pushedAt: '2026-12-01T00:00:00Z' }),
-      repo('atomic-launcher', { pushedAt: '2026-01-01T00:00:00Z' }),
-    ]);
-    expect(names(out)).toEqual(['atomic-launcher', 'space-z', 'zzz']);
-    expect(out.map((p) => p.featured)).toEqual([true, true, false]);
+  it('returns every curated file, in curated order, whatever the public data holds', () => {
+    expect(projects([]).map((p) => p.id)).toEqual(CURATED);
+    expect(projects([repo('zzz')]).map((p) => p.id)).toEqual(CURATED);
   });
 
-  it('orders the remaining active repos by most recent push', () => {
-    const out = projects([
-      repo('old', { pushedAt: '2025-01-01T00:00:00Z' }),
-      repo('new', { pushedAt: '2026-01-01T00:00:00Z' }),
-    ]);
-    expect(names(out)).toEqual(['new', 'old']);
+  it('carries each file as markdown headed by its own id', () => {
+    for (const p of projects([])) expect(p.markdown.split('\n')[0]).toBe(`# ${p.id}`);
   });
 
-  it('archives repos created before 2022, by name, or flagged archived on GitHub, and lists them last', () => {
-    const out = projects([
-      repo('crwn-clothing', { pushedAt: '2026-12-01T00:00:00Z' }),
-      repo('movie-go', { createdAt: '2021-07-11T00:00:00Z', pushedAt: '2026-12-01T00:00:00Z' }),
-      repo('frozen', { archived: true, pushedAt: '2026-12-01T00:00:00Z' }),
-      repo('active', { pushedAt: '2024-01-01T00:00:00Z' }),
-    ]);
-    expect(names(out)).toEqual(['active', 'crwn-clothing', 'movie-go', 'frozen']);
-    expect(out.map((p) => p.archived)).toEqual([false, true, true, true]);
-  });
-
-  it('drops the profile repo', () => {
-    expect(names(projects([repo('subhaneetshrestha'), repo('a')]))).toEqual(['a']);
-  });
-
-  it('tolerates featured names that are absent from the data', () => {
-    expect(names(projects([repo('a')]))).toEqual(['a']);
+  it('joins the public repo when there is one and leaves the link null when there is not', () => {
+    const rel = { tag: 'v1', name: 'v1', prerelease: false, publishedAt: '2026-01-01T00:00:00Z', url: 'https://r', assets: [] };
+    const out = projects([repo('space-z', { pushedAt: '2026-08-12T17:30:22Z', releases: [rel] }), repo('flavique')]);
+    const byId = new Map(out.map((p) => [p.id, p]));
+    expect(byId.get('space-z')).toMatchObject({
+      repoUrl: 'https://github.com/subhaneetshrestha/space-z',
+      pushedAt: '2026-08-12T17:30:22Z',
+      releases: [rel],
+    });
+    expect(byId.get('flavique')).toMatchObject({ repoUrl: 'https://github.com/subhaneetshrestha/flavique', releases: [] });
+    expect(byId.get('karya')).toMatchObject({ repoUrl: null, pushedAt: null, releases: [] });
   });
 });
