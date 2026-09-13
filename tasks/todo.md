@@ -194,14 +194,14 @@ is checkable.
 Tab-completion for commands and project names, and an unknown-command message in the brand's dry voice.
 
 **Acceptance criteria:**
-- [ ] Every command routes correctly; unknown input gives a useful message, not a generic error
-- [ ] Tab completes both command names and project names
-- [ ] Commands are defined in a table, not a switch chain — one place to add more
+- [x] Every command routes correctly; unknown input gives a useful message, not a generic error
+- [x] Tab completes both command names and project names
+- [x] Commands are defined in a table, not a switch chain — one place to add more
 
 **Verification:**
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: run every command in the table
-- [ ] Manual check: press Tab on a partial project name; press up-arrow to recall history
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: run every command in the table
+- [x] Manual check: press Tab on a partial project name; press up-arrow to recall history
 
 **Dependencies:** Tasks 4, 5, 6
 
@@ -214,11 +214,135 @@ Tab-completion for commands and project names, and an unknown-command message in
 ---
 
 ### Checkpoint A: Shippable portfolio, no 3D
-- [ ] All tests pass and the application builds without errors
+- [x] All tests pass and the application builds without errors
 - [ ] All four panes work keyboard-only, end to end
-- [ ] Live on Cloudflare Pages; resume prints cleanly
+- [ ] Live on Cloudflare Pages; resume prints cleanly  ← live at portfolio.subhaneetshrestha.com.np; print unverified by eye
 - [ ] **This is a complete portfolio. Everything after is enhancement.**
 - [ ] **Review with human before proceeding.**
+
+---
+
+## Phase 1.5: Direction change (2026-09-13)
+
+After Phase 1 went live the user reviewed it and redirected three things:
+
+1. **Less GitHub mirror.** The panes showed API-derived data (descriptions,
+   language bytes, README excerpts, an archive list) that a GitHub link
+   already provides. Replace with things GitHub cannot show: the user's own
+   words on each featured project, the resume, live status of what shipped.
+2. **A Linux shell, not a tabbed TUI.** Inside the computer the visitor
+   types: `ls`, `cd`, `cat`, `tree`, `open`, `neofetch`, tab-completion, over
+   a virtual `~`. The tab panes survive only as the touch/mobile fallback.
+3. **The landing is a desk.** Dark room, desk, a retro CRT showing the live
+   shell, a PC tower with one LED, a keyboard slab. Click the monitor to
+   dolly in. Still built from primitives.
+
+Phase 1 carries over almost whole: the content layer (Task 3), resume and
+deployments data, the command dispatcher (Task 7) and its tests become the
+shell's spine. What is demoted: panes as the primary UI, LangBar, the
+archive list, API README excerpts.
+
+### Virtual filesystem (built at module load from src/content)
+
+```
+~/
+  about.txt            profile: name, title, location, bio, summary
+  resume.md            the resume (same text the copy/print path uses)
+  contact.txt          links, email
+  projects/
+    README.md          featured index + "everything else: github.com/…"
+    <id>/README.md     hand-written src/content/projects/<id>.md, followed
+                       by a generated footer: repo link (public repos only),
+                       last push, release assets when any
+  deployments/
+    live.txt           curated live entries with the literal HTTP status
+    releases.txt       release assets with download URLs
+  .bashrc              aliases (ll, la, resume, projects); PS1
+```
+
+Deep links map to an initial command: `/tui` → MOTD + prompt,
+`/tui/resume` → `cat ~/resume.md`, `/tui/projects` → `ls ~/projects`,
+`/tui/deployments` → `cat ~/deployments/live.txt`. Routing stays.
+
+### Shell commands
+
+`help` · `ls [-l] [path]` · `cd [path]` (~, .., -) · `pwd` · `cat <path…>` ·
+`tree [path]` · `open <path|url>` (repo, live site, release asset — new tab) ·
+`clear` · `history` · `whoami` · `neofetch` (ASCII card: OS arch, shell,
+editor nvim, languages, uptime = days since 2020-06-09) · `echo` · `date` ·
+`exit`/`poweroff` (→ `/`, Task 10 wires the reverse dive) · aliases from
+`.bashrc`. Unknown: `sh: <cmd>: command not found. try help.`
+Keys: Tab completes commands then paths relative to cwd; ↑/↓ history;
+Ctrl+L clear; Ctrl+C cancels the line; Ctrl+U clears it; click anywhere
+focuses the input. `cat *.md` renders markdown-lite: `#` heading in
+--primary, `status:`/`stack:` keys in --accent, URLs as real links.
+Scrollback capped at 500 lines, auto-scrolls on output, prompt pinned.
+
+## Task 17: Curated project content
+
+**Description:** Move the eight hand-written READMEs (drafted for the user
+to edit) into `src/content/projects/<id>.md`, load them with Vite's
+`import.meta.glob('./projects/*.md', { query: '?raw', import: 'default',
+eager: true })`, and expose them through `projects.ts` alongside the
+generated facts. Simplify the Projects pane (now the mobile fallback) to
+render the curated text plus footer; delete LangBar, the archive
+`<details>` and API excerpt rendering. Private repos get no link.
+
+**Acceptance criteria:**
+- [ ] `projects()` returns, for each featured id, the curated markdown and a
+      `repoUrl` that is null when the repo is absent from the public data
+- [ ] No language byte counts or API README excerpts are rendered anywhere
+- [ ] `footy-stonks.md` renders its `[fill in]` lines as visible placeholders
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run`
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: `grep -r "languages" src/tui` finds nothing rendering bytes
+
+**Dependencies:** Task 3, Task 5
+**Files likely touched:** `src/content/projects/*.md`, `src/content/projects.ts`,
+`src/tui/panes/Projects.tsx`, tests
+**Estimated scope:** Medium
+
+## Task 16: Linux shell over a virtual filesystem
+
+**Description:** Replace the pane-primary desktop UI with a full-screen shell.
+`src/tui/fs.ts` builds the tree above from the content layer;
+`src/tui/commands.ts` grows the table to the command set above with a
+`cwd` in ctx; `src/tui/CommandLine.tsx` becomes `Shell` output+prompt
+filling the screen. Deep links run an initial command. The existing pane
+components render only under the touch/mobile breakpoint (Task 12 finishes
+that; here, a `matchMedia('(pointer: coarse)')`/width check picks the mode).
+
+**Acceptance criteria:**
+- [ ] `ls`, `cd`, `pwd`, `cat`, `tree` behave like their POSIX namesakes on the
+      virtual tree, including `..`, `~`, relative paths, and errors
+      (`cat: x: No such file or directory`, `cd: x: Not a directory`)
+- [ ] Tab completes commands, then paths relative to cwd; one match completes,
+      several list, zero is silent
+- [ ] `/tui/resume` cold-loads straight into `cat ~/resume.md` output
+- [ ] `open` on a project README opens the repo only when public
+- [ ] Every command in the table is exercised by a test; unknown commands
+      produce the not-found line
+
+**Verification:**
+- [ ] Tests pass: `npx vitest run`
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: keyboard-only session — `ls`, `cd projects`, Tab, `cat`,
+      `neofetch`, `history`, `poweroff`
+
+**Dependencies:** Task 7, Task 17
+**Files likely touched:** `src/tui/fs.ts`, `src/tui/commands.ts`,
+`src/tui/CommandLine.tsx` → `src/tui/Terminal.tsx`, `src/tui/Shell.tsx`,
+`src/tui/tui.module.css`, tests
+**Estimated scope:** Large — split: 16a fs + path resolution + tests;
+16b commands + completion; 16c terminal UI + deep-link initial command
+
+### Checkpoint A′: shell-first portfolio
+- [ ] Build clean, suite green
+- [ ] Keyboard-only: land on `/tui`, `help`, browse projects, read the resume
+- [ ] Live at portfolio.subhaneetshrestha.com.np
+- [ ] User has edited the eight READMEs (or accepted the drafts)
 
 ---
 
@@ -230,6 +354,17 @@ Tab-completion for commands and project names, and an unknown-command message in
 curved screen plane, emissive material, subtle bloom, dark room with a single key light. Idle camera
 drift plus damped pointer parallax, using a hand-rolled rig rather than `OrbitControls` (users must not
 be able to orbit away mid-reveal). Renders on `/` inside its own lazily-loaded chunk.
+
+**Revised 2026-09-13 — desk scene, not a lone monitor:**
+Dark room: floor plane under a soft radial falloff; desk slab; retro CRT
+(bevelled shell, curved glass, slight barrel distortion in the screen
+shader, scanlines); PC tower beside the desk with one small LED in
+--accent; keyboard slab. Lighting: the screen is emissive and drives a
+warm point light; a cool rim light tinted toward --secondary; contact
+shadows from one shadow-casting light or a blurred shadow-plane texture,
+whichever holds 60fps. Idle camera drift + damped pointer parallax. HTML
+overlay: name, one line, "click the monitor" hint, and a skip link to
+`/tui` reachable in one Tab. Everything else as originally specified.
 
 **Acceptance criteria:**
 - [ ] No external 3D assets committed to the repo

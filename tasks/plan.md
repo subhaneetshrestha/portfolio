@@ -32,6 +32,62 @@ profile-view counters and streak badges. It reads like everyone else's and contr
 | Resume content | Typed data file, pre-filled from evidence, TODOs for employment history |
 | Hosting | **Cloudflare Workers static assets** (git-push deploys via Workers Builds; `wrangler.jsonc`), live at https://portfolio.subhaneetshrestha.com.np — chosen as Pages, connected as a Worker; functionally identical for a static SPA |
 
+## Direction change — 2026-09-13
+
+After Phase 1 went live the user reviewed it and redirected three things:
+
+1. **Less GitHub mirror.** The panes showed API-derived data (descriptions,
+   language bytes, README excerpts, an archive list) that a GitHub link
+   already provides. Replace with things GitHub cannot show: the user's own
+   words on each featured project, the resume, live status of what shipped.
+2. **A Linux shell, not a tabbed TUI.** Inside the computer the visitor
+   types: `ls`, `cd`, `cat`, `tree`, `open`, `neofetch`, tab-completion, over
+   a virtual `~`. The tab panes survive only as the touch/mobile fallback.
+3. **The landing is a desk.** Dark room, desk, a retro CRT showing the live
+   shell, a PC tower with one LED, a keyboard slab. Click the monitor to
+   dolly in. Still built from primitives.
+
+Phase 1 carries over almost whole: the content layer (Task 3), resume and
+deployments data, the command dispatcher (Task 7) and its tests become the
+shell's spine. What is demoted: panes as the primary UI, LangBar, the
+archive list, API README excerpts.
+
+### Virtual filesystem (built at module load from src/content)
+
+```
+~/
+  about.txt            profile: name, title, location, bio, summary
+  resume.md            the resume (same text the copy/print path uses)
+  contact.txt          links, email
+  projects/
+    README.md          featured index + "everything else: github.com/…"
+    <id>/README.md     hand-written src/content/projects/<id>.md, followed
+                       by a generated footer: repo link (public repos only),
+                       last push, release assets when any
+  deployments/
+    live.txt           curated live entries with the literal HTTP status
+    releases.txt       release assets with download URLs
+  .bashrc              aliases (ll, la, resume, projects); PS1
+```
+
+Deep links map to an initial command: `/tui` → MOTD + prompt,
+`/tui/resume` → `cat ~/resume.md`, `/tui/projects` → `ls ~/projects`,
+`/tui/deployments` → `cat ~/deployments/live.txt`. Routing stays.
+
+### Shell commands
+
+`help` · `ls [-l] [path]` · `cd [path]` (~, .., -) · `pwd` · `cat <path…>` ·
+`tree [path]` · `open <path|url>` (repo, live site, release asset — new tab) ·
+`clear` · `history` · `whoami` · `neofetch` (ASCII card: OS arch, shell,
+editor nvim, languages, uptime = days since 2020-06-09) · `echo` · `date` ·
+`exit`/`poweroff` (→ `/`, Task 10 wires the reverse dive) · aliases from
+`.bashrc`. Unknown: `sh: <cmd>: command not found. try help.`
+Keys: Tab completes commands then paths relative to cwd; ↑/↓ history;
+Ctrl+L clear; Ctrl+C cancels the line; Ctrl+U clears it; click anywhere
+focuses the input. `cat *.md` renders markdown-lite: `#` heading in
+--primary, `status:`/`stack:` keys in --accent, URLs as real links.
+Scrollback capped at 500 lines, auto-scrolls on output, prompt pinned.
+
 ---
 
 ## Brand
@@ -202,8 +258,17 @@ Full acceptance criteria and verification steps for each task live in [`todo.md`
 - [ ] All four panes work keyboard-only, live on Cloudflare Pages, resume printable
 - [ ] **Everything after this point is enhancement. Review with human before proceeding.**
 
+### Phase 1.5: Direction change — shell-first, curated content
+- [ ] Task 17: Curated project content — M
+- [ ] Task 16a: Virtual filesystem + path resolution — S
+- [ ] Task 16b: Shell commands + completion — M
+- [ ] Task 16c: Terminal UI + deep-link initial command — M
+
+### Checkpoint A′: shell-first portfolio
+- [ ] Keyboard-only shell session end to end; live; READMEs edited or accepted
+
 ### Phase 2: The 3D landing
-- [ ] Task 8: Procedural CRT scene — M
+- [ ] Task 8: Procedural desk scene — CRT, tower, keyboard on a desk — M
 - [ ] **Checkpoint B: does the procedural CRT look good enough?** (decide: invest or source a model)
 - [ ] Task 9: Live screen texture — S
 - [ ] Task 10: The dive — M
