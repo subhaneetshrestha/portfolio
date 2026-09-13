@@ -18,13 +18,13 @@ to be broken at the end.
 
 **Acceptance criteria:**
 - [x] `npm run build` emits static output and `npm run dev` serves locally
-- [ ] A public `*.pages.dev` URL renders a placeholder in JetBrains Mono on `--bg`
+- [x] A public URL renders in JetBrains Mono on `--bg` — https://portfolio.subhaneetshrestha.com.np (Cloudflare Workers static assets, custom domain)
 - [x] Every brand color exists as a CSS custom property; no raw hex in any component
 - [x] `/` and `/tui` are separate routes with the landing chunk lazily imported
 
 **Verification:**
 - [x] Build succeeds: `npm run build`
-- [ ] Manual check: open the live `*.pages.dev` URL
+- [x] Manual check: opened the live URL — https://portfolio.subhaneetshrestha.com.np; bundle, font origin and deep links verified with curl
 - [x] Manual check: DevTools Network shows the font served from own origin — no `fonts.gstatic.com`
 
 **Dependencies:** None
@@ -42,7 +42,7 @@ to be broken at the end.
 
 ### Checkpoint: Foundation
 - [x] Build succeeds with no type errors
-- [ ] Public URL live and rendering  ← Cloudflare not connected yet
+- [x] Public URL live and rendering — https://portfolio.subhaneetshrestha.com.np
 - [x] Fonts self-hosted, tokens in place
 
 ---

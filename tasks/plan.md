@@ -30,7 +30,7 @@ profile-view counters and streak badges. It reads like everyone else's and contr
 | Brand name | **Subhaneet Shrestha** leads; `hyzii` is the shell username flavour |
 | Deployments pane | Live URLs **+** release binaries **+** honest retired list |
 | Resume content | Typed data file, pre-filled from evidence, TODOs for employment history |
-| Hosting | **Cloudflare Pages** |
+| Hosting | **Cloudflare Workers static assets** (git-push deploys via Workers Builds; `wrangler.jsonc`), live at https://portfolio.subhaneetshrestha.com.np — chosen as Pages, connected as a Worker; functionally identical for a static SPA |
 
 ---
 
