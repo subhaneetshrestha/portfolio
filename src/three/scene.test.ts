@@ -2,7 +2,13 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { applyAspect, applyCameraOffset, buildScene, cappedDPR, dampParallax, idleDrift, LOOK_AT } from './scene';
 
-const palette = { bg: '#0B0D10', fg: '#C9D1D9', primary: '#00ADD8', accent: '#FFB454', secondary: '#1793D1' };
+const palette = {
+  bg: '#0B0D10', fg: '#C9D1D9', primary: '#00ADD8', accent: '#FFB454', secondary: '#1793D1',
+  wall: '#F4F0E3', wood: '#E8A85E', woodDark: '#B97A3E', rug: '#E15B08', chair: '#211D42',
+  bezel: '#1E1A38', tower: '#E3D8C9', glow: '#E405A3', glow2: '#4A33E5', led: '#46D160',
+  cactus: '#6FCB5C', pot: '#EBEAE0', bookA: '#F5A428', bookB: '#F35A22', bookC: '#2E2B42',
+  mousepad: '#6B6E7A', keycap: '#F5F3EA', keycapAccent: '#4FC3E0', window: '#FBF6E8',
+};
 
 describe('buildScene', () => {
   it('assembles a desk, a monitor, a tower, a keyboard, a mousepad and a mouse into one scene', () => {
@@ -12,12 +18,12 @@ describe('buildScene', () => {
     }
   });
 
-  it('gives the tower a Go-cyan side glow, not just the status LED', () => {
+  it('gives the tower the reference\'s magenta side glow, sampled directly', () => {
     const { scene } = buildScene(palette);
     const glow = scene.getObjectByName('towerGlow') as THREE.Mesh;
     expect(glow).toBeTruthy();
     const mat = glow.material as THREE.MeshBasicMaterial;
-    expect(mat.color.getHexString()).toBe('00add8'); // palette.primary, lowercase hex
+    expect(mat.color.getHexString()).toBe('e405a3'); // palette.glow
   });
 
   it('builds the keyboard as one instanced draw call, not one mesh per key', () => {
@@ -36,15 +42,15 @@ describe('buildScene', () => {
 
   it('paints the background from the palette, not a hardcoded color', () => {
     const { scene } = buildScene(palette);
-    expect((scene.background as THREE.Color).getHexString()).toBe('0b0d10');
+    expect((scene.background as THREE.Color).getHexString()).toBe('f4f0e3'); // palette.wall
   });
 
-  it('gives the tower an LED tinted from the accent token', () => {
+  it('gives the tower a green power LED, sampled from the reference', () => {
     const { scene } = buildScene(palette);
     const led = scene.getObjectByName('led') as THREE.Mesh;
     expect(led).toBeTruthy();
     const mat = led.material as THREE.MeshBasicMaterial;
-    expect(mat.color.getHexString()).toBe('ffb454');
+    expect(mat.color.getHexString()).toBe('46d160');
   });
 
   it('starts an orthographic camera at a true isometric angle, looking toward the desk', () => {
@@ -127,12 +133,12 @@ describe('buildScene — room and furniture (Task 8d)', () => {
     expect(room.getObjectByName('sideWall')).toBeTruthy();
   });
 
-  it('gives the window a cool night glow tinted from the secondary token, not the primary one', () => {
+  it('gives the window a daylight tone, not the old night-cyan glow', () => {
     const { scene } = buildScene(palette);
     const window_ = scene.getObjectByName('window') as THREE.Mesh;
     expect(window_).toBeTruthy();
     const mat = window_.material as THREE.MeshBasicMaterial;
-    expect(mat.color.getHexString()).toBe('1793d1'); // palette.secondary
+    expect(mat.color.getHexString()).toBe('fbf6e8'); // palette.window
   });
 
   it('lays a rug on the floor and seats a chair at the desk', () => {
@@ -153,12 +159,12 @@ describe('buildScene — dressing (Task 8e)', () => {
     expect(shelf.getObjectByName('cactus')).toBeTruthy();
   });
 
-  it('carries the brand mark on one poster, in the accent token', () => {
+  it('carries the brand mark on one poster, tinted from the tower\'s own glow', () => {
     const { scene } = buildScene(palette);
     const mark = scene.getObjectByName('posterMark') as THREE.Mesh;
     expect(mark).toBeTruthy();
     const mat = mark.material as THREE.MeshBasicMaterial;
-    expect(mat.color.getHexString()).toBe('ffb454'); // palette.accent
+    expect(mat.color.getHexString()).toBe('e405a3'); // palette.glow
   });
 
   it('adds a monstera, a bin and a pair of slippers to finish the room', () => {

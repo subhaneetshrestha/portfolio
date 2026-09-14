@@ -10,8 +10,6 @@ import type { Palette } from './palette';
  * which applies just as much to a flat panel.
  */
 
-const SHELL_DARK = new THREE.Color(0x1c1c1c);
-
 export type Monitor = {
   group: THREE.Group;
   /** The raycast target for Task 10's click-to-dive. Must stay a real child of `group`. */
@@ -27,7 +25,7 @@ export function buildMonitor(palette: Palette): Monitor {
   group.rotation.x = THREE.MathUtils.degToRad(-4);
 
   const shellMaterial = new THREE.MeshPhysicalMaterial({
-    color: SHELL_DARK,
+    color: palette.bezel,
     roughness: 0.45,
     metalness: 0.1,
     clearcoat: 0.7,

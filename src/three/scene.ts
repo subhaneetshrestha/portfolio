@@ -29,20 +29,22 @@ function buildRoom(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'room';
 
-  // A dark floor with a soft radial falloff toward the desk, done as a vertex-color
-  // gradient rather than a texture — no image asset for a plane nobody looks straight at.
-  const floorGeometry = new THREE.CircleGeometry(6, 48);
-  const center = new THREE.Color(palette.bg).multiplyScalar(1.6);
-  const edge = new THREE.Color(palette.bg).multiplyScalar(0.4);
+  // A flat wood floor with a very slight, wide gradient (barely perceptible —
+  // this is a lit daylight room, not a night vignette). Large enough that its
+  // boundary sits outside the frame; a vertex-color gradient rather than a
+  // texture, no image asset for a plane the camera barely grazes.
+  const floorGeometry = new THREE.CircleGeometry(12, 48);
+  const center = new THREE.Color(palette.wood);
+  const edge = new THREE.Color(palette.woodDark).lerp(center, 0.5);
   const pos = floorGeometry.attributes.position!;
   const colors = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
-    const d = Math.min(1, Math.hypot(pos.getX(i), pos.getY(i)) / 6);
+    const d = Math.min(1, Math.hypot(pos.getX(i), pos.getY(i)) / 12);
     const c = center.clone().lerp(edge, d);
     colors.set([c.r, c.g, c.b], i * 3);
   }
   floorGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const floor = new THREE.Mesh(floorGeometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+  const floor = new THREE.Mesh(floorGeometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }));
   floor.name = 'floor';
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
@@ -51,8 +53,8 @@ function buildRoom(palette: Palette): THREE.Group {
   // Two walls meeting in a corner behind/beside the desk — enough for the isometric
   // camera (looking from the +x/+y/+z octant) to read this as a room, not a void.
   const wallMaterial = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(palette.bg).multiplyScalar(3.4),
-    roughness: 0.98,
+    color: palette.wall,
+    roughness: 0.95,
   });
 
   const backWall = new THREE.Mesh(new THREE.PlaneGeometry(9, ROOM_HEIGHT), wallMaterial);
@@ -68,9 +70,9 @@ function buildRoom(palette: Palette): THREE.Group {
   sideWall.receiveShadow = true;
   group.add(sideWall);
 
-  // A cool night window glow on the side wall — the counterpoint to the monitor's
-  // warm key light, in the same direction as the existing secondary-tinted rim light.
-  const windowMaterial = new THREE.MeshBasicMaterial({ color: palette.secondary });
+  // Daylight through the window on the side wall — the reference's actual light
+  // source; the room is lit like midday, not like the monitor's own glow.
+  const windowMaterial = new THREE.MeshBasicMaterial({ color: palette.window });
   const windowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.5), windowMaterial);
   windowMesh.name = 'window';
   windowMesh.rotation.y = Math.PI / 2;
@@ -81,12 +83,11 @@ function buildRoom(palette: Palette): THREE.Group {
 }
 
 function buildRug(palette: Palette): THREE.Mesh {
-  // Muted with an amber undertone — the reference's orange shag rug, translated
-  // into something that sits quietly in the dark palette instead of competing with it.
-  const rugColor = new THREE.Color(palette.fg).multiplyScalar(0.14).lerp(new THREE.Color(palette.accent), 0.16);
+  // The reference's own orange shag rug, sampled directly — see tasks/plan.md,
+  // "exact color assets".
   const rug = new THREE.Mesh(
     new THREE.CircleGeometry(1.1, 40),
-    new THREE.MeshStandardMaterial({ color: rugColor, roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: palette.rug, roughness: 1 }),
   );
   rug.name = 'rug';
   rug.rotation.x = -Math.PI / 2;
@@ -99,9 +100,9 @@ function buildChair(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'chair';
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(palette.bg).multiplyScalar(2.5),
-    roughness: 0.6,
-    clearcoat: 0.3,
+    color: palette.chair,
+    roughness: 0.5,
+    clearcoat: 0.5,
   });
 
   const seat = new THREE.Mesh(new RoundedBoxGeometry(0.55, 0.08, 0.5, 2, 0.06), material);
@@ -132,12 +133,12 @@ function buildDesk(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'desk';
   // Clearcoat: a lacquered desk surface picks up the studio IBL as a soft
-  // highlight, the same reason the CRT shell got MeshPhysicalMaterial.
+  // highlight, the same reason the monitor shell got MeshPhysicalMaterial.
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(palette.fg).multiplyScalar(0.15),
-    roughness: 0.6,
-    clearcoat: 0.35,
-    clearcoatRoughness: 0.4,
+    color: palette.wood,
+    roughness: 0.45,
+    clearcoat: 0.4,
+    clearcoatRoughness: 0.3,
   });
 
   const slab = new THREE.Mesh(new RoundedBoxGeometry(3.2, 0.08, 1.3, 2, 0.03), material);
@@ -164,35 +165,43 @@ function buildTower(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'tower';
   const body = new THREE.Mesh(
-    new RoundedBoxGeometry(0.32, 0.85, 0.7, 2, 0.025),
-    new THREE.MeshPhysicalMaterial({ color: 0x161616, roughness: 0.5, metalness: 0.15, clearcoat: 0.4, clearcoatRoughness: 0.35 }),
+    new RoundedBoxGeometry(0.32, 0.85, 0.7, 2, 0.03),
+    new THREE.MeshPhysicalMaterial({ color: palette.tower, roughness: 0.4, metalness: 0.05, clearcoat: 0.5, clearcoatRoughness: 0.25 }),
   );
   body.name = 'towerBody';
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
 
-  // One small status LED — the tower's one point of color, per tasks/plan.md.
+  // The power LED — green, sampled from the reference (was amber).
   const led = new THREE.Mesh(
     new THREE.CircleGeometry(0.015, 12),
-    new THREE.MeshBasicMaterial({ color: palette.accent }),
+    new THREE.MeshBasicMaterial({ color: palette.led }),
   );
   led.name = 'led';
   led.position.set(0, 0.32, 0.351);
   group.add(led);
 
-  // A slim vertical Go-cyan accent strip down the front edge — the reference's
-  // magenta RGB tower, translated into the brand's primary token instead.
+  // The reference's own magenta/violet RGB-fan glow, sampled directly — the
+  // tower's one big point of color, seen through a dark window in its shell.
   const glow = new THREE.Mesh(
-    new RoundedBoxGeometry(0.015, 0.7, 0.015, 1, 0.006),
-    new THREE.MeshBasicMaterial({ color: palette.primary }),
+    new RoundedBoxGeometry(0.02, 0.75, 0.02, 1, 0.008),
+    new THREE.MeshBasicMaterial({ color: palette.glow }),
   );
   glow.name = 'towerGlow';
   glow.position.set(0.14, 0, 0.353);
   group.add(glow);
-  // A weak point light so the strip actually casts a little cyan onto the desk
-  // beside it, rather than only glowing in isolation.
-  const glowLight = new THREE.PointLight(new THREE.Color(palette.primary), 0.25, 1.2, 2);
+  // A second, cooler point in the same window — the reference's glow is a
+  // magenta/violet mix, not a single flat hue.
+  const glow2 = new THREE.Mesh(
+    new THREE.SphereGeometry(0.05, 12, 10),
+    new THREE.MeshBasicMaterial({ color: palette.glow2 }),
+  );
+  glow2.position.set(0.1, 0.15, 0.34);
+  group.add(glow2);
+  // A weak point light so the glow actually casts a little color onto the
+  // desk beside it, rather than only glowing in isolation.
+  const glowLight = new THREE.PointLight(new THREE.Color(palette.glow), 0.35, 1.4, 2);
   glowLight.position.copy(glow.position);
   group.add(glowLight);
 
@@ -203,11 +212,7 @@ function buildTower(palette: Palette): THREE.Group {
 function buildKeyboard(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'keyboard';
-  const boardMaterial = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(palette.fg).multiplyScalar(0.1),
-    roughness: 0.7,
-    clearcoat: 0.2,
-  });
+  const boardMaterial = new THREE.MeshPhysicalMaterial({ color: palette.bezel, roughness: 0.5, clearcoat: 0.3 });
   const slab = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.03, 0.3, 1, 0.01), boardMaterial);
   group.add(slab);
 
@@ -216,7 +221,9 @@ function buildKeyboard(palette: Palette): THREE.Group {
   const KEY_SIZE = 0.045;
   const GAP = 0.006;
   const keyGeometry = new RoundedBoxGeometry(KEY_SIZE, 0.014, KEY_SIZE, 1, 0.003);
-  const keyMaterial = new THREE.MeshPhysicalMaterial({ color: 0x141414, roughness: 0.55, clearcoat: 0.3 });
+  // vertexColors lets one InstancedMesh (one draw call) carry the reference's
+  // mixed white/cyan keycaps instead of a single flat color.
+  const keyMaterial = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.55, clearcoat: 0.4, vertexColors: true });
   const keys = new THREE.InstancedMesh(keyGeometry, keyMaterial, COLS * ROWS);
   keys.name = 'keys';
   keys.castShadow = true;
@@ -224,14 +231,20 @@ function buildKeyboard(palette: Palette): THREE.Group {
   const originX = -((COLS - 1) * pitch) / 2;
   const originZ = -((ROWS - 1) * pitch) / 2;
   const m = new THREE.Matrix4();
+  const white = new THREE.Color(palette.keycap);
+  const accent = new THREE.Color(palette.keycapAccent);
   let i = 0;
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {
       m.makeTranslation(originX + col * pitch, 0.022, originZ + row * pitch);
-      keys.setMatrixAt(i++, m);
+      keys.setMatrixAt(i, m);
+      // A diagonal accent stripe, echoing the reference's colored key cluster.
+      keys.setColorAt(i, (col - row) % 5 === 0 ? accent : white);
+      i++;
     }
   }
   keys.instanceMatrix.needsUpdate = true;
+  if (keys.instanceColor) keys.instanceColor.needsUpdate = true;
   group.add(keys);
 
   return group;
@@ -240,7 +253,7 @@ function buildKeyboard(palette: Palette): THREE.Group {
 function buildMousepad(palette: Palette): THREE.Mesh {
   const pad = new THREE.Mesh(
     new RoundedBoxGeometry(0.42, 0.008, 0.3, 1, 0.02),
-    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.06), roughness: 0.9 }),
+    new THREE.MeshPhysicalMaterial({ color: palette.mousepad, roughness: 0.9 }),
   );
   pad.name = 'mousepad';
   pad.receiveShadow = true;
@@ -250,7 +263,7 @@ function buildMousepad(palette: Palette): THREE.Mesh {
 function buildMouse(palette: Palette): THREE.Mesh {
   const mouse = new THREE.Mesh(
     new RoundedBoxGeometry(0.075, 0.035, 0.12, 2, 0.03),
-    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.12), roughness: 0.45, clearcoat: 0.5 }),
+    new THREE.MeshPhysicalMaterial({ color: palette.bezel, roughness: 0.4, clearcoat: 0.5 }),
   );
   mouse.name = 'mouse';
   mouse.castShadow = true;
@@ -263,11 +276,13 @@ function buildMouse(palette: Palette): THREE.Mesh {
 function buildLaptop(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'laptop';
+  // The reference's laptop is brushed aluminum, not a dark shell — the one
+  // desk object that reads as a distinct light-metal material.
   const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(palette.fg).multiplyScalar(0.12),
-    roughness: 0.4,
-    metalness: 0.3,
-    clearcoat: 0.5,
+    color: new THREE.Color(palette.tower).multiplyScalar(0.92),
+    roughness: 0.35,
+    metalness: 0.6,
+    clearcoat: 0.4,
   });
 
   const base = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.018, 0.24, 1, 0.015), material);
@@ -289,7 +304,7 @@ function buildLaptop(palette: Palette): THREE.Group {
 function buildTablet(palette: Palette): THREE.Mesh {
   const tablet = new THREE.Mesh(
     new RoundedBoxGeometry(0.22, 0.012, 0.3, 1, 0.02),
-    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.1), roughness: 0.35, clearcoat: 0.6 }),
+    new THREE.MeshPhysicalMaterial({ color: palette.bezel, roughness: 0.35, clearcoat: 0.6 }),
   );
   tablet.name = 'tablet';
   tablet.castShadow = true;
@@ -300,7 +315,7 @@ function buildTablet(palette: Palette): THREE.Mesh {
 function buildMug(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'mug';
-  const material = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.secondary).multiplyScalar(0.6), roughness: 0.5, clearcoat: 0.3 });
+  const material = new THREE.MeshPhysicalMaterial({ color: palette.bezel, roughness: 0.45, clearcoat: 0.4 });
 
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.07, 16), material);
   body.position.y = 0.035;
@@ -321,17 +336,21 @@ function buildPenCup(palette: Palette): THREE.Group {
   group.name = 'penCup';
   const cup = new THREE.Mesh(
     new THREE.CylinderGeometry(0.03, 0.026, 0.08, 16),
-    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.08), roughness: 0.6 }),
+    new THREE.MeshPhysicalMaterial({ color: palette.pot, roughness: 0.4, clearcoat: 0.3 }),
   );
   cup.position.y = 0.04;
   cup.castShadow = true;
   cup.receiveShadow = true;
   group.add(cup);
 
-  // A couple of pens leaning out, just enough to read as "pens" at this scale.
-  const penMaterial = new THREE.MeshBasicMaterial({ color: palette.accent });
-  for (const [x, tilt] of [[0.008, 0.15], [-0.006, -0.1]] as const) {
-    const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.12, 6), penMaterial);
+  // Orange and red-orange pens, matching the reference — two colors read as
+  // "pens" better than one flat tone at this scale.
+  const penColors = [palette.bookA, palette.bookB];
+  for (const [i, [x, tilt]] of ([[0.008, 0.15], [-0.006, -0.1]] as const).entries()) {
+    const pen = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.003, 0.003, 0.12, 6),
+      new THREE.MeshBasicMaterial({ color: penColors[i] }),
+    );
     pen.position.set(x, 0.1, 0);
     pen.rotation.z = tilt;
     group.add(pen);
@@ -345,7 +364,7 @@ function buildSucculent(palette: Palette): THREE.Group {
   group.name = 'succulent';
   const pot = new THREE.Mesh(
     new THREE.CylinderGeometry(0.032, 0.026, 0.045, 16),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.15), roughness: 0.8 }),
+    new THREE.MeshStandardMaterial({ color: palette.pot, roughness: 0.6 }),
   );
   pot.position.y = 0.0225;
   pot.castShadow = true;
@@ -354,7 +373,7 @@ function buildSucculent(palette: Palette): THREE.Group {
 
   const plant = new THREE.Mesh(
     new THREE.SphereGeometry(0.03, 8, 6),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(0x1c3a24), roughness: 0.9 }),
+    new THREE.MeshStandardMaterial({ color: palette.cactus, roughness: 0.85 }),
   );
   plant.position.y = 0.06;
   plant.scale.y = 0.8;
@@ -368,9 +387,9 @@ function buildShelf(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'shelf';
   const woodMaterial = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(palette.fg).multiplyScalar(0.13),
-    roughness: 0.6,
-    clearcoat: 0.2,
+    color: palette.wood,
+    roughness: 0.5,
+    clearcoat: 0.3,
   });
 
   const plank = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.04, 0.22, 1, 0.015), woodMaterial);
@@ -380,7 +399,7 @@ function buildShelf(palette: Palette): THREE.Group {
 
   const books = new THREE.Group();
   books.name = 'books';
-  const bookColors = [palette.secondary, palette.accent, palette.fg];
+  const bookColors = [palette.bookA, palette.bookB, palette.bookC];
   let bx = -0.45;
   for (const color of bookColors) {
     const w = 0.05;
@@ -400,13 +419,13 @@ function buildShelf(palette: Palette): THREE.Group {
   cactus.name = 'cactus';
   const pot = new THREE.Mesh(
     new THREE.CylinderGeometry(0.035, 0.03, 0.05, 12),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.15), roughness: 0.8 }),
+    new THREE.MeshStandardMaterial({ color: palette.pot, roughness: 0.6 }),
   );
   pot.position.y = 0.045;
   cactus.add(pot);
   const body = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.022, 0.07, 4, 8),
-    new THREE.MeshStandardMaterial({ color: 0x2f6b3a, roughness: 0.85 }),
+    new THREE.MeshStandardMaterial({ color: palette.cactus, roughness: 0.7 }),
   );
   body.position.y = 0.11;
   cactus.add(body);
@@ -416,11 +435,21 @@ function buildShelf(palette: Palette): THREE.Group {
   return group;
 }
 
-function buildPoster(color: THREE.ColorRepresentation): THREE.Mesh {
-  return new THREE.Mesh(
-    new RoundedBoxGeometry(0.5, 0.68, 0.015, 1, 0.01),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.9 }),
+/** A framed poster: a white frame behind a slightly smaller, inset colored face. */
+function buildPoster(faceColor: THREE.ColorRepresentation, frameColor: THREE.ColorRepresentation): THREE.Group {
+  const group = new THREE.Group();
+  const frame = new THREE.Mesh(
+    new RoundedBoxGeometry(0.5, 0.68, 0.02, 1, 0.008),
+    new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.6 }),
   );
+  group.add(frame);
+  const face = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.44, 0.62),
+    new THREE.MeshStandardMaterial({ color: faceColor, roughness: 0.85 }),
+  );
+  face.position.z = 0.011;
+  group.add(face);
+  return group;
 }
 
 function buildMonstera(palette: Palette): THREE.Group {
@@ -428,14 +457,16 @@ function buildMonstera(palette: Palette): THREE.Group {
   group.name = 'monstera';
   const pot = new THREE.Mesh(
     new THREE.CylinderGeometry(0.16, 0.13, 0.22, 20),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.85), roughness: 0.6 }),
+    new THREE.MeshStandardMaterial({ color: palette.pot, roughness: 0.6 }),
   );
   pot.position.y = 0.11;
   pot.castShadow = true;
   pot.receiveShadow = true;
   group.add(pot);
 
-  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x224a2c, roughness: 0.85 });
+  // A deeper, larger-leafed green than the desk succulent/cactus — same
+  // family, distinct plant.
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.cactus).multiplyScalar(0.55), roughness: 0.85 });
   const leafSpots: [number, number, number, number][] = [
     [0, 0.55, 0, 0.22],
     [0.12, 0.72, 0.08, 0.17],
@@ -456,7 +487,7 @@ function buildMonstera(palette: Palette): THREE.Group {
 function buildBin(palette: Palette): THREE.Mesh {
   const bin = new THREE.Mesh(
     new THREE.CylinderGeometry(0.12, 0.09, 0.22, 16, 1, true),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.1), roughness: 0.7, side: THREE.DoubleSide }),
+    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.tower).multiplyScalar(0.65), roughness: 0.35, metalness: 0.7, side: THREE.DoubleSide }),
   );
   bin.name = 'bin';
   bin.castShadow = true;
@@ -467,13 +498,19 @@ function buildBin(palette: Palette): THREE.Mesh {
 function buildSlippers(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'slippers';
-  const material = new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.accent).multiplyScalar(0.5), roughness: 0.9 });
+  const foamMaterial = new THREE.MeshStandardMaterial({ color: palette.pot, roughness: 0.85 });
+  const strapMaterial = new THREE.MeshBasicMaterial({ color: palette.bookB });
   for (const x of [-0.09, 0.09]) {
-    const slipper = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.03, 0.22, 1, 0.03), material);
+    const slipper = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.03, 0.22, 1, 0.03), foamMaterial);
     slipper.position.set(x, 0.015, 0);
     slipper.castShadow = true;
     slipper.receiveShadow = true;
     group.add(slipper);
+
+    const strap = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.004, 6, 12, Math.PI), strapMaterial);
+    strap.rotation.set(0, 0, Math.PI / 2);
+    strap.position.set(x, 0.03, -0.02);
+    group.add(strap);
   }
   return group;
 }
@@ -487,8 +524,8 @@ export type Scene = {
 
 export function buildScene(palette: Palette): Scene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(palette.bg);
-  scene.fog = new THREE.Fog(new THREE.Color(palette.bg).getHex(), 5, 13);
+  scene.background = new THREE.Color(palette.wall);
+  scene.fog = new THREE.Fog(new THREE.Color(palette.wall).getHex(), 6, 15);
 
   scene.add(buildRoom(palette));
   scene.add(buildRug(palette));
@@ -552,23 +589,36 @@ export function buildScene(palette: Palette): Scene {
   shelf.position.set(0.6, 2.15, ROOM_BACK_Z + 0.12);
   scene.add(shelf);
 
-  const posterA = buildPoster(new THREE.Color(palette.fg).multiplyScalar(0.9));
+  // Poster A: a dark, moody face (the reference's illustrated bottle poster) —
+  // a solid color stands in for the artwork itself; recreating someone else's
+  // specific illustration isn't the goal, matching its color language is.
+  const posterA = buildPoster(palette.bezel, palette.wall);
   posterA.name = 'posterA';
   posterA.position.set(-1.4, 1.75, ROOM_BACK_Z + 0.01);
   scene.add(posterA);
 
-  const posterB = buildPoster(new THREE.Color(palette.fg).multiplyScalar(0.35));
+  // Poster B: a plain cream face (the reference's "Stay Hungry" text poster).
+  const posterB = buildPoster(new THREE.Color(palette.wall).multiplyScalar(0.97), palette.wall);
   posterB.name = 'posterB';
   posterB.position.set(1.9, 1.55, ROOM_BACK_Z + 0.01);
   scene.add(posterB);
 
-  // One poster carries the brand mark — the block cursor, in --accent, per tasks/plan.md.
+  // A third poster on the side wall — the reference's colorful running-figure
+  // print — approximated as a bright accent face, same reasoning as posterA.
+  const posterC = buildPoster(palette.glow2, palette.wall);
+  posterC.name = 'posterC';
+  posterC.rotation.y = Math.PI / 2;
+  posterC.position.set(ROOM_LEFT_X + 0.02, 1.9, -1.6);
+  scene.add(posterC);
+
+  // Poster A carries the brand mark — the block cursor — in the tower's own
+  // magenta glow color, tying the landing back to the terminal it opens into.
   const posterMark = new THREE.Mesh(
     new THREE.PlaneGeometry(0.05, 0.09),
-    new THREE.MeshBasicMaterial({ color: palette.accent }),
+    new THREE.MeshBasicMaterial({ color: palette.glow }),
   );
   posterMark.name = 'posterMark';
-  posterMark.position.set(1.9, 1.4, ROOM_BACK_Z + 0.02);
+  posterMark.position.set(-1.4, 1.62, ROOM_BACK_Z + 0.02);
   scene.add(posterMark);
 
   const monstera = buildMonstera(palette);
@@ -583,16 +633,16 @@ export function buildScene(palette: Palette): Scene {
   slippers.position.set(0.85, 0.001, 1.95);
   scene.add(slippers);
 
-  // Lighting: the monitor's own glow (in buildMonitor) is the warm key light. A cool rim
-  // light tinted toward the secondary token separates the desk from the dark room,
-  // and one shadow-casting spot gives the desk objects contact shadows. IBL (in
-  // renderer.ts, via RoomEnvironment) supplies the soft ambient fill and the
-  // reflections that make the new MeshPhysicalMaterial clearcoats read as physical.
-  const rim = new THREE.DirectionalLight(new THREE.Color(palette.secondary), 0.35);
-  rim.position.set(-3, 3, 1.5);
-  scene.add(rim);
+  // Lighting: a daylight scene, not a night one — the window (in buildRoom) is
+  // the implied source. A warm fill light stands in for it directionally, and
+  // one shadow-casting key light gives the desk objects contact shadows. IBL
+  // (in renderer.ts, via RoomEnvironment) supplies most of the soft ambient
+  // fill that makes the MeshPhysicalMaterial clearcoats read as physical.
+  const fill = new THREE.DirectionalLight(0xffffff, 0.45);
+  fill.position.set(-3, 3, 1.5);
+  scene.add(fill);
 
-  const key = new THREE.SpotLight(0xffffff, 0.6, 9, Math.PI / 4.2, 0.45);
+  const key = new THREE.SpotLight(0xffffff, 0.55, 9, Math.PI / 4.2, 0.45);
   key.position.set(2, 4, 2.5);
   // Aim at the desk SURFACE, not the desk group's origin (which sits at floor
   // level) — otherwise everything actually resting on the desk reads dim.

@@ -120,6 +120,8 @@ describe('Terminal output', () => {
   });
 
   it('keeps a surviving entry\'s own DOM node and text stable when older entries are dropped', () => {
+    // 250+ fireEvent submissions is inherently slow; give it real headroom
+    // instead of racing the default 5s under a loaded test run.
     // Regression for keying scrollback <li>s by array index: once cap() drops the
     // oldest entry, every remaining index shifts, and an index key makes React
     // rewrite each surviving node's content in place — silently showing the wrong
@@ -135,7 +137,7 @@ describe('Terminal output', () => {
     const after = items();
     expect(after).toContain(survivor);
     expect(survivor.textContent).toBe(survivorText);
-  });
+  }, 15_000);
 
   it('ignores an empty Enter', () => {
     render(<Terminal />);

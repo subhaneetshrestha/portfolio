@@ -25,6 +25,11 @@
   gap: 0.5rem;
   padding: 1.5rem;
   pointer-events: none; /* clicks pass through to the canvas; only the skip link opts back in */
+  /* A scrim, not a color choice: the overlay text needs to read against
+     whatever the 3D scene behind it happens to be — a bright daylight room
+     today, something else after a future palette change — so darken the
+     bottom of the frame rather than pick text colors tuned to one scene. */
+  background: linear-gradient(to top, rgb(0 0 0 / 55%), transparent 70%);
 }
 
 .overlay a {

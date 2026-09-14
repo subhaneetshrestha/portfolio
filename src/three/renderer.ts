@@ -30,7 +30,7 @@ export function createRenderer(
 ): SceneRenderer {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 0.85;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -42,7 +42,7 @@ export function createRenderer(
   // RoomEnvironment is tuned as a bright product-shot studio (a 900-intensity
   // point light) — right for reflections and highlights, far too much ambient
   // fill for a dark room at night. Keep the reflections, cut the flood.
-  scene.environmentIntensity = 0.22;
+  scene.environmentIntensity = 0.35;
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));

@@ -3,7 +3,13 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { buildMonitor } from './monitor';
 
-const palette = { bg: '#0B0D10', fg: '#C9D1D9', primary: '#00ADD8', accent: '#FFB454', secondary: '#1793D1' };
+const palette = {
+  bg: '#0B0D10', fg: '#C9D1D9', primary: '#00ADD8', accent: '#FFB454', secondary: '#1793D1',
+  wall: '#F4F0E3', wood: '#E8A85E', woodDark: '#B97A3E', rug: '#E15B08', chair: '#211D42',
+  bezel: '#1E1A38', tower: '#E3D8C9', glow: '#E405A3', glow2: '#4A33E5', led: '#46D160',
+  cactus: '#6FCB5C', pot: '#EBEAE0', bookA: '#F5A428', bookB: '#F35A22', bookC: '#2E2B42',
+  mousepad: '#6B6E7A', keycap: '#F5F3EA', keycapAccent: '#4FC3E0', window: '#FBF6E8',
+};
 
 describe('buildMonitor', () => {
   it('returns a group containing a panel and a named, raycastable screen mesh', () => {

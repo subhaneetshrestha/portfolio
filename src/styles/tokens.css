@@ -12,6 +12,31 @@
   --dead: #6E7681;
   --muted-fg: #8B949E;
 
+  /* Landing scene only (src/three) — sampled directly from the user's chosen
+     reference (blenderartists.org, 3000x3000) with a color-picker, not
+     eyeballed, per "exact color assets". Deliberately NOT the --bg/--fg/etc.
+     brand tokens above: the TUI stays dark-terminal; this is a bright,
+     literal match to a specific image. Never used outside src/three. */
+  --scene-wall: #F4F0E3;
+  --scene-wood: #E8A85E;      /* desk, shelf */
+  --scene-wood-dark: #B97A3E; /* floor: a shade darker than the desk */
+  --scene-rug: #E15B08;
+  --scene-chair: #211D42;
+  --scene-bezel: #1E1A38;     /* monitor shell + screen-off, tower window frame */
+  --scene-tower: #E3D8C9;
+  --scene-glow: #E405A3;      /* tower fan + screen ambient glow, magenta */
+  --scene-glow-2: #4A33E5;    /* secondary tower glow, blue-violet */
+  --scene-led: #46D160;       /* tower power LED, green (was amber) */
+  --scene-cactus: #6FCB5C;
+  --scene-pot: #EBEAE0;
+  --scene-book-a: #F5A428;
+  --scene-book-b: #F35A22;
+  --scene-book-c: #2E2B42;
+  --scene-mousepad: #6B6E7A;
+  --scene-keycap: #F5F3EA;
+  --scene-keycap-accent: #4FC3E0;
+  --scene-window: #FBF6E8;    /* daylight, not the old night-cyan glow */
+
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   /* Strict sizes: 12 / 14 / 16. No in-between. */
   --text-sm: 12px;

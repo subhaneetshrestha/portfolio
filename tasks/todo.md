@@ -450,6 +450,53 @@ Shelf with books/cactus, two posters, monstera, bin, slippers, cables.
 ### Task 8f — Polish and perf gate · not started
 Final lighting pass, 60fps measurement, chunk-growth record, reduced-motion/fallback re-check.
 
+### Palette reversal (2026-09-14, later the same day): exact reference colors
+
+After Checkpoint B-final the user supplied a second, higher-resolution reference
+(blenderartists.org, 3000x3000) and asked for "exactly the same, with very high quality and
+exact color assets" — a full reversal of the earlier "whole scene, in the dark brand palette"
+decision made during the first redesign round. Confirmed with the user before touching anything,
+given how large a reversal this is (see the two-question check: palette direction, and how to
+handle the reference's real Apple/Figma logos).
+
+**Colors are no longer invented or brand-derived — they're sampled.** Every `--scene-*` token in
+`tokens.css` was picked with a color-picker directly from the reference image (crops verified
+visually before sampling, not eyeballed from memory): `--scene-wall #F4F0E3`, `--scene-wood
+#E8A85E`, `--scene-rug #E15B08`, `--scene-chair #211D42`, `--scene-bezel #1E1A38`, `--scene-tower
+#E3D8C9`, `--scene-glow #E405A3` (the tower's magenta RGB fan), `--scene-led #46D160` (green, not
+the old amber), plus book/cactus/keycap/window tokens. `src/three/palette.ts`'s `Palette` type
+grew from 5 fields to 24; every material in `scene.ts` and `monitor.ts` was repointed from the
+old brand-derived colors to these.
+
+**One narrow, deliberate exception:** the reference's phone and mug carry real Apple and Figma
+logos. Built the shapes at full fidelity; did not reproduce either trademark on a live public
+site. Everything else in the scene is as close to the reference as hand-coded WebGL primitives
+get.
+
+**Two real bugs the harness caught before either shipped, on top of the color swap itself:**
+- The whole scene came out badly overexposed on the first daylight pass — walls blown to
+  near-white, the floor a giant blown-out radial "spotlight" rather than a flat floor. The floor
+  geometry still carried its old night-vignette radial gradient (bright center → near-black edge)
+  from when the room was dark; combined with brighter wall/wood albedos, a studio IBL tuned for a
+  night scene (`environmentIntensity: 0.22`), and light intensities raised for daylight, it
+  compounded into blowout. Fixed by widening the floor so its boundary sits off-frame, halving the
+  gradient's contrast, and retuning `toneMappingExposure` (1.1 → 0.85), `environmentIntensity`
+  (0.22 → 0.35), and the fill/key light intensities down from an initial over-correction.
+- The landing's HTML overlay text (`hyzii@arch:~$`, the hint, the skip link) lost contrast once
+  the 3D scene behind it went from near-black to a bright warm floor — the text colors were tuned
+  for a dark backdrop. Fixed with a scrim (`linear-gradient` on `.overlay`, not a text-color
+  change) so legibility holds regardless of what the scene behind it looks like after any future
+  palette change.
+
+**Also closed while touching every material color:** `tests/no-raw-hex.test.ts` only ever matched
+`#hex` strings — it never caught Three.js's `0xhex` numeric-literal style, and five materials in
+`scene.ts` had been using it to bypass the guard undetected (tower body, keycar color, succulent
+plant, shelf cactus, monstera leaves). Extended the regex to catch both forms, with `0xffffff` /
+`0x000000` exempted as optical-neutral light colors, not design choices.
+
+286 tests (accounting for updated color assertions and 5 new fixtures added along the way), clean
+build, entry chunk still zero occurrences of `WebGLRenderer`.
+
 ### Checkpoint B-final (2026-09-14)
 Full scene against the reference: desk, modern monitor, tower with accent glow, keyboard/mouse/
 mousepad, chair, rug, two walls + window, laptop/tablet/mug/pen cup/succulent, shelf with
