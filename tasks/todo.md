@@ -497,6 +497,35 @@ plant, shelf cactus, monstera leaves). Extended the regex to catch both forms, w
 286 tests (accounting for updated color assertions and 5 new fixtures added along the way), clean
 build, entry chunk still zero occurrences of `WebGLRenderer`.
 
+### Second quality pass (2026-09-14, third round): real geometry, not just color
+
+User verdict on the color-matched daylight scene: "still looks nothing like the pic I sent, quality
+too low, colors not vibrant." Diagnosed by cropping my render and the reference side by side at the
+same region (the tower) instead of re-guessing — the actual gap was geometry depth, not just hue.
+
+**The tower's "glow" was a painted line, not a window.** The reference tower has a real recessed
+glass window with a visible colorful fan inside, vent slats, and a physical power button. Mine had
+a flat accent strip on the surface. Rebuilt `buildTower()`: the shell is now shallower than the
+tower's true depth on purpose, with a separate four-bar frame at the actual front forming an open
+rectangle — the fan/glow discs sit in the gap between shell and frame, genuinely visible through
+the opening rather than (the first attempt's real bug) buried inside a solid box and fully occluded
+by its own front face. Added real vent slats and a physical button+LED.
+
+**ACES tone mapping was fighting "vibrant."** ACESFilmicToneMapping is a photographic, cinematic
+rolloff that desaturates by design — the opposite of what a flat, saturated illustration-style
+reference needs. Switched to `THREE.NeutralToneMapping`, which preserves hue/saturation much closer
+to the raw material color. A first attempt at "more vibrant" by simply raising exposure and IBL
+intensity (1.05 / 0.55) overexposed the whole right side of the frame into a white haze — bloom's
+threshold (0.82) let far more of the now-brighter walls trigger the bloom pass, smearing color
+across half the image. Reverted exposure to 1.0, IBL to 0.4, and raised the bloom threshold to 0.94
+so only genuinely emissive things (the screen, the tower's glow) bloom.
+
+**Monitor** gained a webcam clip on top (a real reference detail) and its screen/ambient-glow
+retinted from the brand cyan placeholder to the reference's own magenta (`palette.glow`) — Task 9
+may keep this or switch back once real terminal content replaces the placeholder.
+
+289 tests, clean build, entry chunk still zero occurrences of `WebGLRenderer`.
+
 ### Checkpoint B-final (2026-09-14)
 Full scene against the reference: desk, modern monitor, tower with accent glow, keyboard/mouse/
 mousepad, chair, rug, two walls + window, laptop/tablet/mug/pen cup/succulent, shelf with

@@ -47,12 +47,26 @@ export function buildMonitor(palette: Palette): Monitor {
   const screenGeometry = new THREE.PlaneGeometry(1.3, 0.72);
   // Task 9 replaces this flat tint with a CanvasTexture boot log; MeshBasicMaterial
   // (unlit) is the right base for that — the glow should come from the content, not
-  // from scene lighting hitting the glass.
-  const screenMaterial = new THREE.MeshBasicMaterial({ color: palette.primary });
+  // from scene lighting hitting the glass. Tinted from the reference's own screen
+  // glow (magenta/violet) for now — Task 9 may keep this or switch to the site's
+  // brand cyan once real terminal content replaces it.
+  const screenMaterial = new THREE.MeshBasicMaterial({ color: palette.glow });
   const screen = new THREE.Mesh(screenGeometry, screenMaterial);
   screen.name = 'screen';
   screen.position.z = 0.032;
   group.add(screen);
+
+  // A small webcam clip on top of the bezel — a real detail from the reference,
+  // not just a flat panel.
+  const webcam = new THREE.Group();
+  webcam.name = 'webcam';
+  const webcamBody = new THREE.Mesh(new RoundedBoxGeometry(0.14, 0.05, 0.05, 1, 0.02), shellMaterial);
+  webcam.add(webcamBody);
+  const webcamClip = new THREE.Mesh(new RoundedBoxGeometry(0.03, 0.06, 0.03, 1, 0.01), shellMaterial);
+  webcamClip.position.y = -0.04;
+  webcam.add(webcamClip);
+  webcam.position.set(0, 0.49, 0.01);
+  group.add(webcam);
 
   // A slim neck rather than a CRT's cylindrical stack.
   const neck = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.32, 0.06, 1, 0.02), shellMaterial);
@@ -69,11 +83,11 @@ export function buildMonitor(palette: Palette): Monitor {
   foot.receiveShadow = true;
   group.add(foot);
 
-  // Phosphor-style glow: a short-range point light seated just in front of the
-  // glass, tinted from the same token the screen itself uses — the scene's
-  // one warm key light, same role the CRT's glow played before.
-  const glow = new THREE.PointLight(new THREE.Color(palette.primary), 0.8, 2.4, 2);
-  glow.position.set(0, 0, 0.6);
+  // Ambient screen glow: a short-range point light seated just in front of the
+  // glass, tinted from the same token the screen itself uses — visible as a
+  // soft colored bleed onto the desk in front of the monitor, per the reference.
+  const glow = new THREE.PointLight(new THREE.Color(palette.glow), 1.1, 2.6, 2);
+  glow.position.set(0, -0.15, 0.65);
   group.add(glow);
 
   return { group, screen, screenMaterial };

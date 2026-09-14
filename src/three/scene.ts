@@ -164,46 +164,123 @@ function buildDesk(palette: Palette): THREE.Group {
 function buildTower(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'tower';
-  const body = new THREE.Mesh(
-    new RoundedBoxGeometry(0.32, 0.85, 0.7, 2, 0.03),
-    new THREE.MeshPhysicalMaterial({ color: palette.tower, roughness: 0.4, metalness: 0.05, clearcoat: 0.5, clearcoatRoughness: 0.25 }),
-  );
+  const shellMaterial = new THREE.MeshPhysicalMaterial({
+    color: palette.tower, roughness: 0.35, metalness: 0.05, clearcoat: 0.6, clearcoatRoughness: 0.2,
+  });
+
+  const DEPTH = 0.7;
+  const FRONT_Z = DEPTH / 2; // 0.35 — the true front plane, where the frame sits
+  // The shell itself stops short of the true front — a solid RoundedBoxGeometry
+  // has no "hole", so the only way to genuinely reveal the window behind it is
+  // to make the whole shell shallower and let a separate frame (below) form
+  // the visible front, open in the middle. Heavily rounded — the reference's
+  // tower reads almost pill-shaped, not a sharp-edged box with a light bevel.
+  const SHELL_FRONT_Z = FRONT_Z - 0.06;
+  const body = new THREE.Mesh(new RoundedBoxGeometry(0.32, 0.85, SHELL_FRONT_Z * 2, 4, 0.09), shellMaterial);
   body.name = 'towerBody';
+  // Geometry is centered on its own origin, so at z=0 its front face already
+  // lands exactly at SHELL_FRONT_Z — no extra offset needed (a stray one here
+  // previously pushed it 0.06 short of where the window math assumes).
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
 
-  // The power LED — green, sampled from the reference (was amber).
+  // Vent slats across the top — real geometry, not a texture, matching the
+  // reference's grille detail.
+  const vents = new THREE.Group();
+  vents.name = 'towerVents';
+  const ventMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.tower).multiplyScalar(0.85), roughness: 0.6 });
+  for (let i = 0; i < 6; i++) {
+    const slat = new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.012, 0.02, 1, 0.004), ventMaterial);
+    slat.position.set(0, 0.425, -0.22 + i * 0.06);
+    slat.castShadow = true;
+    vents.add(slat);
+  }
+  group.add(vents);
+
+  // Inside the window: a colorful fan — a warm hub over a magenta/violet glow
+  // disc, the reference's RGB-fan look, all unlit so it reads as genuinely
+  // glowing regardless of the room's own lighting. Sits just in front of the
+  // shell's own (now-shallower) front face, genuinely open to view through
+  // the frame's hole below — nothing solid occupies this z-range here.
+  const winCenterY = -0.02;
+  const winW = 0.2;
+  const winH = 0.48;
+  const fanZ = SHELL_FRONT_Z + 0.02;
+  const glassBack = new THREE.Mesh(
+    new RoundedBoxGeometry(winW, winH, 0.01, 2, 0.02),
+    new THREE.MeshStandardMaterial({ color: palette.bezel, roughness: 0.4 }),
+  );
+  glassBack.name = 'towerWindow';
+  glassBack.position.set(0, winCenterY, SHELL_FRONT_Z + 0.005);
+  group.add(glassBack);
+
+  const glowDisc = new THREE.Mesh(new THREE.CircleGeometry(0.1, 24), new THREE.MeshBasicMaterial({ color: palette.glow2 }));
+  glowDisc.position.set(0, winCenterY, fanZ);
+  group.add(glowDisc);
+
+  const fanHub = new THREE.Mesh(new THREE.CircleGeometry(0.06, 5), new THREE.MeshBasicMaterial({ color: palette.bookA }));
+  fanHub.position.set(0, winCenterY, fanZ + 0.004);
+  fanHub.rotation.z = Math.PI / 10;
+  group.add(fanHub);
+
+  // The reference's own magenta glow, sampled directly — kept as a named,
+  // independently-colored element so the window reads as multi-hued, not flat.
+  const glow = new THREE.Mesh(
+    new THREE.RingGeometry(0.065, 0.11, 24),
+    new THREE.MeshBasicMaterial({ color: palette.glow, side: THREE.DoubleSide }),
+  );
+  glow.name = 'towerGlow';
+  glow.position.set(0, winCenterY, fanZ + 0.002);
+  group.add(glow);
+
+  // A weak point light so the glow actually casts a little color onto the
+  // desk beside it, rather than only glowing in isolation.
+  const glowLight = new THREE.PointLight(new THREE.Color(palette.glow), 0.5, 1.6, 2);
+  glowLight.position.set(0, winCenterY, FRONT_Z);
+  group.add(glowLight);
+
+  // The front frame: four bars at the true front plane, bordering the window
+  // rectangle with an open center — this, not the shell, is what actually
+  // reveals the fan/glow behind it.
+  const frame = new THREE.Group();
+  frame.name = 'towerFrame';
+  const margin = 0.03;
+  const barZ = FRONT_Z - 0.008;
+  const vBar = new RoundedBoxGeometry(margin, winH + margin * 2, 0.02, 1, 0.006);
+  const hBar = new RoundedBoxGeometry(winW + margin * 2, margin, 0.02, 1, 0.006);
+  const left = new THREE.Mesh(vBar, shellMaterial);
+  left.position.set(-(winW / 2 + margin / 2), winCenterY, barZ);
+  frame.add(left);
+  const right = new THREE.Mesh(vBar, shellMaterial);
+  right.position.set(winW / 2 + margin / 2, winCenterY, barZ);
+  frame.add(right);
+  const top = new THREE.Mesh(hBar, shellMaterial);
+  top.position.set(0, winCenterY + winH / 2 + margin / 2, barZ);
+  frame.add(top);
+  const bottom = new THREE.Mesh(hBar, shellMaterial);
+  bottom.position.set(0, winCenterY - winH / 2 - margin / 2, barZ);
+  frame.add(bottom);
+  frame.children.forEach((m) => { (m as THREE.Mesh).castShadow = true; (m as THREE.Mesh).receiveShadow = true; });
+  group.add(frame);
+
+  // A physical power button beside the window frame, on solid material —
+  // a recessed ring plus a raised cap — with the LED, green per the
+  // reference, seated just below it.
+  const buttonMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.tower).multiplyScalar(0.5), roughness: 0.5 });
+  const button = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.012, 16), buttonMaterial);
+  button.name = 'towerButton';
+  button.rotation.x = Math.PI / 2;
+  button.position.set(winW / 2 + margin + 0.03, 0.06, FRONT_Z - 0.005);
+  group.add(button);
+
   const led = new THREE.Mesh(
-    new THREE.CircleGeometry(0.015, 12),
+    new THREE.CircleGeometry(0.008, 12),
     new THREE.MeshBasicMaterial({ color: palette.led }),
   );
   led.name = 'led';
-  led.position.set(0, 0.32, 0.351);
+  led.position.set(winW / 2 + margin + 0.03, -0.02, FRONT_Z + 0.001);
   group.add(led);
-
-  // The reference's own magenta/violet RGB-fan glow, sampled directly — the
-  // tower's one big point of color, seen through a dark window in its shell.
-  const glow = new THREE.Mesh(
-    new RoundedBoxGeometry(0.02, 0.75, 0.02, 1, 0.008),
-    new THREE.MeshBasicMaterial({ color: palette.glow }),
-  );
-  glow.name = 'towerGlow';
-  glow.position.set(0.14, 0, 0.353);
-  group.add(glow);
-  // A second, cooler point in the same window — the reference's glow is a
-  // magenta/violet mix, not a single flat hue.
-  const glow2 = new THREE.Mesh(
-    new THREE.SphereGeometry(0.05, 12, 10),
-    new THREE.MeshBasicMaterial({ color: palette.glow2 }),
-  );
-  glow2.position.set(0.1, 0.15, 0.34);
-  group.add(glow2);
-  // A weak point light so the glow actually casts a little color onto the
-  // desk beside it, rather than only glowing in isolation.
-  const glowLight = new THREE.PointLight(new THREE.Color(palette.glow), 0.35, 1.4, 2);
-  glowLight.position.copy(glow.position);
-  group.add(glowLight);
 
   return group;
 }

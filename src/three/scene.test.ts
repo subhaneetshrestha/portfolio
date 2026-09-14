@@ -26,6 +26,28 @@ describe('buildScene', () => {
     expect(mat.color.getHexString()).toBe('e405a3'); // palette.glow
   });
 
+  it('gives the tower a recessed glass window, not a flat painted line', () => {
+    const { scene } = buildScene(palette);
+    const tower = scene.getObjectByName('tower') as THREE.Group;
+    const window_ = tower.getObjectByName('towerWindow') as THREE.Mesh;
+    const frame = tower.getObjectByName('towerFrame') as THREE.Group;
+    expect(window_).toBeTruthy();
+    expect(frame).toBeTruthy();
+    // "Recessed" — the glass sits behind the visible front frame, not flush with it,
+    // and nothing solid occupies the gap between them (the actual hole/cavity).
+    const frameZ = (frame.children[0] as THREE.Mesh).position.z;
+    expect(window_.position.z).toBeLessThan(frameZ);
+  });
+
+  it('gives the tower vent slats and a physical power button, not just a flat shell', () => {
+    const { scene } = buildScene(palette);
+    const tower = scene.getObjectByName('tower') as THREE.Group;
+    const vents = tower.getObjectByName('towerVents') as THREE.Group;
+    expect(vents).toBeTruthy();
+    expect(vents.children.length).toBeGreaterThanOrEqual(4);
+    expect(tower.getObjectByName('towerButton')).toBeTruthy();
+  });
+
   it('builds the keyboard as one instanced draw call, not one mesh per key', () => {
     const { scene } = buildScene(palette);
     const keyboard = scene.getObjectByName('keyboard') as THREE.Group;

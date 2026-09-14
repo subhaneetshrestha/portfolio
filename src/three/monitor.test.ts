@@ -55,10 +55,15 @@ describe('buildMonitor', () => {
 
   it('tints the screen from the given palette, not a hardcoded color', () => {
     const a = buildMonitor(palette);
-    const b = buildMonitor({ ...palette, primary: '#FF0000' });
+    const b = buildMonitor({ ...palette, glow: '#FF0000' });
     const colorOf = (m: THREE.Material) => (m as THREE.MeshBasicMaterial).color.getHexString();
     expect(colorOf(a.screenMaterial)).not.toBe(colorOf(b.screenMaterial));
     expect(colorOf(b.screenMaterial)).toBe('ff0000');
+  });
+
+  it('carries a webcam clip on top, per the reference', () => {
+    const { group } = buildMonitor(palette);
+    expect(group.getObjectByName('webcam')).toBeTruthy();
   });
 
   it('never loads an external model — pure primitives only', () => {

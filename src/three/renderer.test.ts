@@ -35,12 +35,12 @@ vi.mock('three', async (importOriginal) => {
 });
 
 describe('createRenderer', () => {
-  it('configures ACES tone mapping and soft shadow maps', () => {
+  it('configures neutral tone mapping (not ACES\'s desaturating filmic rolloff) and soft shadow maps', () => {
     const canvas = document.createElement('canvas');
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera();
     const { renderer } = createRenderer(canvas, scene, camera);
-    expect(renderer.toneMapping).toBe(THREE.ACESFilmicToneMapping);
+    expect(renderer.toneMapping).toBe(THREE.NeutralToneMapping);
     expect(renderer.shadowMap.enabled).toBe(true);
     expect(renderer.shadowMap.type).toBe(THREE.PCFSoftShadowMap);
   });
@@ -54,12 +54,12 @@ describe('createRenderer', () => {
     expect(scene.environment).toBeInstanceOf(THREE.Texture);
   });
 
-  it('dims the studio IBL well below its product-shot default — this is a dark room, not a showroom', () => {
+  it('keeps the studio IBL below its product-shot-bright default, tuned for this room', () => {
     const canvas = document.createElement('canvas');
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera();
     createRenderer(canvas, scene, camera);
-    expect(scene.environmentIntensity).toBeLessThan(0.5);
+    expect(scene.environmentIntensity).toBeLessThan(1); // RoomEnvironment's own default reads far brighter
     expect(scene.environmentIntensity).toBeGreaterThan(0);
   });
 
