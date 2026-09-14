@@ -341,7 +341,7 @@ that; here, a `matchMedia('(pointer: coarse)')`/width check picks the mode).
 ### Checkpoint A′: shell-first portfolio
 - [x] Build clean, suite green — 233 tests, `npm run build` clean
 - [x] Keyboard-only: land on `/tui`, `help`, browse projects, read the resume — covered end to end by Shell/Terminal/commands test suites
-- [ ] Live at portfolio.subhaneetshrestha.com.np reflecting this state  ← pending this push
+- [x] Live at portfolio.subhaneetshrestha.com.np reflecting this state — verified ef26bcf's bundle live (Cloudflare build completed/success)
 - [ ] User has edited the eight READMEs (or accepted the drafts)  ← still the drafted versions
 - [x] Resume filled from the user's CV (two revisions); no TODOs remain in `src/content/resume.ts`
 - [x] Phase 1 review disposition: round 1 found 54 → 45 confirmed (31 fixed across two groups, 13 folded
