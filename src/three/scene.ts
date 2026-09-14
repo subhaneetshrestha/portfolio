@@ -364,6 +364,120 @@ function buildSucculent(palette: Palette): THREE.Group {
   return group;
 }
 
+function buildShelf(palette: Palette): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'shelf';
+  const woodMaterial = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(palette.fg).multiplyScalar(0.13),
+    roughness: 0.6,
+    clearcoat: 0.2,
+  });
+
+  const plank = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.04, 0.22, 1, 0.015), woodMaterial);
+  plank.castShadow = true;
+  plank.receiveShadow = true;
+  group.add(plank);
+
+  const books = new THREE.Group();
+  books.name = 'books';
+  const bookColors = [palette.secondary, palette.accent, palette.fg];
+  let bx = -0.45;
+  for (const color of bookColors) {
+    const w = 0.05;
+    const book = new THREE.Mesh(
+      new RoundedBoxGeometry(w, 0.18, 0.16, 1, 0.008),
+      new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.7), roughness: 0.7 }),
+    );
+    book.position.set(bx, 0.11, 0);
+    book.castShadow = true;
+    books.add(book);
+    bx += w + 0.01;
+  }
+  books.position.y = 0.02;
+  group.add(books);
+
+  const cactus = new THREE.Group();
+  cactus.name = 'cactus';
+  const pot = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.03, 0.05, 12),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.15), roughness: 0.8 }),
+  );
+  pot.position.y = 0.045;
+  cactus.add(pot);
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.022, 0.07, 4, 8),
+    new THREE.MeshStandardMaterial({ color: 0x2f6b3a, roughness: 0.85 }),
+  );
+  body.position.y = 0.11;
+  cactus.add(body);
+  cactus.position.set(0.4, 0.02, 0);
+  group.add(cactus);
+
+  return group;
+}
+
+function buildPoster(color: THREE.ColorRepresentation): THREE.Mesh {
+  return new THREE.Mesh(
+    new RoundedBoxGeometry(0.5, 0.68, 0.015, 1, 0.01),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.9 }),
+  );
+}
+
+function buildMonstera(palette: Palette): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'monstera';
+  const pot = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.13, 0.22, 20),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.85), roughness: 0.6 }),
+  );
+  pot.position.y = 0.11;
+  pot.castShadow = true;
+  pot.receiveShadow = true;
+  group.add(pot);
+
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x224a2c, roughness: 0.85 });
+  const leafSpots: [number, number, number, number][] = [
+    [0, 0.55, 0, 0.22],
+    [0.12, 0.72, 0.08, 0.17],
+    [-0.14, 0.68, -0.06, 0.18],
+    [0.02, 0.9, -0.1, 0.15],
+  ];
+  for (const [x, y, z, r] of leafSpots) {
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leafMaterial);
+    leaf.position.set(x, y, z);
+    leaf.scale.set(1, 1.3, 0.6);
+    leaf.castShadow = true;
+    group.add(leaf);
+  }
+
+  return group;
+}
+
+function buildBin(palette: Palette): THREE.Mesh {
+  const bin = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.09, 0.22, 16, 1, true),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.1), roughness: 0.7, side: THREE.DoubleSide }),
+  );
+  bin.name = 'bin';
+  bin.castShadow = true;
+  bin.receiveShadow = true;
+  return bin;
+}
+
+function buildSlippers(palette: Palette): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'slippers';
+  const material = new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.accent).multiplyScalar(0.5), roughness: 0.9 });
+  for (const x of [-0.09, 0.09]) {
+    const slipper = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.03, 0.22, 1, 0.03), material);
+    slipper.position.set(x, 0.015, 0);
+    slipper.castShadow = true;
+    slipper.receiveShadow = true;
+    group.add(slipper);
+  }
+  return group;
+}
+
 export type Scene = {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
@@ -432,6 +546,42 @@ export function buildScene(palette: Palette): Scene {
   succulent.scale.setScalar(1.6);
   succulent.position.set(1.05, 0.66, -0.5);
   scene.add(succulent);
+
+  // Wall dressing, mounted on the back wall (z = ROOM_BACK_Z) above the desk.
+  const shelf = buildShelf(palette);
+  shelf.position.set(0.6, 2.15, ROOM_BACK_Z + 0.12);
+  scene.add(shelf);
+
+  const posterA = buildPoster(new THREE.Color(palette.fg).multiplyScalar(0.9));
+  posterA.name = 'posterA';
+  posterA.position.set(-1.4, 1.75, ROOM_BACK_Z + 0.01);
+  scene.add(posterA);
+
+  const posterB = buildPoster(new THREE.Color(palette.fg).multiplyScalar(0.35));
+  posterB.name = 'posterB';
+  posterB.position.set(1.9, 1.55, ROOM_BACK_Z + 0.01);
+  scene.add(posterB);
+
+  // One poster carries the brand mark — the block cursor, in --accent, per tasks/plan.md.
+  const posterMark = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.05, 0.09),
+    new THREE.MeshBasicMaterial({ color: palette.accent }),
+  );
+  posterMark.name = 'posterMark';
+  posterMark.position.set(1.9, 1.4, ROOM_BACK_Z + 0.02);
+  scene.add(posterMark);
+
+  const monstera = buildMonstera(palette);
+  monstera.position.set(-2.5, 0, -0.6);
+  scene.add(monstera);
+
+  const bin = buildBin(palette);
+  bin.position.set(1.55, 0.11, 0.95);
+  scene.add(bin);
+
+  const slippers = buildSlippers(palette);
+  slippers.position.set(0.85, 0.001, 1.95);
+  scene.add(slippers);
 
   // Lighting: the monitor's own glow (in buildMonitor) is the warm key light. A cool rim
   // light tinted toward the secondary token separates the desk from the dark room,

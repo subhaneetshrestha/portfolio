@@ -142,6 +142,33 @@ describe('buildScene — room and furniture (Task 8d)', () => {
   });
 });
 
+describe('buildScene — dressing (Task 8e)', () => {
+  it('mounts a shelf with books and a cactus, and two posters, on the back wall', () => {
+    const { scene } = buildScene(palette);
+    for (const name of ['shelf', 'posterA', 'posterB']) {
+      expect(scene.getObjectByName(name), name).toBeTruthy();
+    }
+    const shelf = scene.getObjectByName('shelf') as THREE.Group;
+    expect(shelf.getObjectByName('books')).toBeTruthy();
+    expect(shelf.getObjectByName('cactus')).toBeTruthy();
+  });
+
+  it('carries the brand mark on one poster, in the accent token', () => {
+    const { scene } = buildScene(palette);
+    const mark = scene.getObjectByName('posterMark') as THREE.Mesh;
+    expect(mark).toBeTruthy();
+    const mat = mark.material as THREE.MeshBasicMaterial;
+    expect(mat.color.getHexString()).toBe('ffb454'); // palette.accent
+  });
+
+  it('adds a monstera, a bin and a pair of slippers to finish the room', () => {
+    const { scene } = buildScene(palette);
+    for (const name of ['monstera', 'bin', 'slippers']) {
+      expect(scene.getObjectByName(name), name).toBeTruthy();
+    }
+  });
+});
+
 describe('cappedDPR', () => {
   it('passes through anything at or below 2', () => {
     expect(cappedDPR(1)).toBe(1);
