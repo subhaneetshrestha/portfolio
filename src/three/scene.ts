@@ -1,15 +1,19 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { loadModel } from './models';
 import { buildMonitor } from './monitor';
 import type { Palette } from './palette';
 
 /**
- * The desk scene the landing page shows before a visitor dives in: a dark
- * room, a desk carrying the CRT, a tower and a keyboard, framed with a true
- * isometric camera. Everything here is primitives — see tasks/plan.md,
- * "The CRT is built procedurally", and "Landing scene redesign" for the
- * isometric/IBL/bevel rework this file went through after Checkpoint B
- * found the first pass "very bad and low quality".
+ * The desk scene the landing page shows before a visitor dives in: a room,
+ * a desk carrying the monitor and a tower, framed with a true isometric
+ * camera. See tasks/plan.md, "Landing scene redesign" and "Loading a real
+ * 3D model instead of hand-coded geometry" — most furniture here is now
+ * loaded from Kenney's CC0 Furniture Kit (public/models/kenney/, via
+ * loadModel() in ./models) and recolored to the site's exact sampled
+ * palette; the monitor and tower stay hand-built primitives because they
+ * need a named, raycastable screen and exact glow-color control that a
+ * generic asset doesn't give us.
  */
 
 export const LOOK_AT = new THREE.Vector3(0.15, 0.7, -0.15);
@@ -24,6 +28,39 @@ const FRUSTUM_HEIGHT = 7.5;
 const ROOM_HEIGHT = 4.5;
 const ROOM_BACK_Z = -3;
 const ROOM_LEFT_X = -3.6;
+
+/**
+ * Grounds a loaded model onto a horizontal surface at height `restY` (the
+ * floor at 0, or a desk top) and centers its footprint at (x, z). Kenney's
+ * kit doesn't share a consistent pivot across models — some sit at their own
+ * bottom-center, some don't (a raw .position.set() left the chair, keyboard,
+ * mouse and laptop floating, offset, or hanging off the desk's back edge) —
+ * so every loaded model goes through this rather than a direct position set.
+ * Set rotation on the model BEFORE calling this: the box is measured with
+ * whatever rotation is already applied.
+ */
+function groundAt(model: THREE.Object3D, x: number, z: number, restY = 0): THREE.Box3 {
+  model.position.set(0, 0, 0);
+  const box = new THREE.Box3().setFromObject(model);
+  const centerX = (box.min.x + box.max.x) / 2;
+  const centerZ = (box.min.z + box.max.z) / 2;
+  model.position.set(x - centerX, restY - box.min.y, z - centerZ);
+  return new THREE.Box3().setFromObject(model);
+}
+
+/**
+ * Mounts a loaded model on a wall: centers its footprint at x, sets its
+ * lowest point to sit at y, and pushes its back face (min z) flush against
+ * backZ. Unlike groundAt(), never floor-grounded — for shelves and anything
+ * else that hangs rather than stands.
+ */
+function mountOnWall(model: THREE.Object3D, x: number, y: number, backZ: number): THREE.Box3 {
+  model.position.set(0, 0, 0);
+  const box = new THREE.Box3().setFromObject(model);
+  const centerX = (box.min.x + box.max.x) / 2;
+  model.position.set(x - centerX, y - box.min.y, backZ - box.min.z);
+  return new THREE.Box3().setFromObject(model);
+}
 
 function buildRoom(palette: Palette): THREE.Group {
   const group = new THREE.Group();
@@ -82,85 +119,6 @@ function buildRoom(palette: Palette): THREE.Group {
   return group;
 }
 
-function buildRug(palette: Palette): THREE.Mesh {
-  // The reference's own orange shag rug, sampled directly — see tasks/plan.md,
-  // "exact color assets".
-  const rug = new THREE.Mesh(
-    new THREE.CircleGeometry(1.1, 40),
-    new THREE.MeshStandardMaterial({ color: palette.rug, roughness: 1 }),
-  );
-  rug.name = 'rug';
-  rug.rotation.x = -Math.PI / 2;
-  rug.position.set(0.3, 0.002, 1.4);
-  rug.receiveShadow = true;
-  return rug;
-}
-
-function buildChair(palette: Palette): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'chair';
-  const material = new THREE.MeshPhysicalMaterial({
-    color: palette.chair,
-    roughness: 0.5,
-    clearcoat: 0.5,
-  });
-
-  const seat = new THREE.Mesh(new RoundedBoxGeometry(0.55, 0.08, 0.5, 2, 0.06), material);
-  seat.position.y = 0.5;
-  seat.castShadow = true;
-  seat.receiveShadow = true;
-  group.add(seat);
-
-  const back = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.65, 0.08, 2, 0.06), material);
-  back.position.set(0, 0.85, -0.24);
-  back.rotation.x = THREE.MathUtils.degToRad(-8);
-  back.castShadow = true;
-  group.add(back);
-
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 12), material);
-  post.position.y = 0.26;
-  group.add(post);
-
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 5), material);
-  base.position.y = 0.03;
-  base.receiveShadow = true;
-  group.add(base);
-
-  return group;
-}
-
-function buildDesk(palette: Palette): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'desk';
-  // Clearcoat: a lacquered desk surface picks up the studio IBL as a soft
-  // highlight, the same reason the monitor shell got MeshPhysicalMaterial.
-  const material = new THREE.MeshPhysicalMaterial({
-    color: palette.wood,
-    roughness: 0.45,
-    clearcoat: 0.4,
-    clearcoatRoughness: 0.3,
-  });
-
-  const slab = new THREE.Mesh(new RoundedBoxGeometry(3.2, 0.08, 1.3, 2, 0.03), material);
-  slab.position.y = 0.62;
-  slab.castShadow = true;
-  slab.receiveShadow = true;
-  group.add(slab);
-
-  const legXs = [-1.5, 1.5];
-  for (const x of legXs) {
-    const leg = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.62, 0.08, 1, 0.015), material);
-    leg.position.set(x, 0.31, 0.55);
-    leg.castShadow = true;
-    group.add(leg);
-    const legBack = leg.clone();
-    legBack.position.z = -0.55;
-    group.add(legBack);
-  }
-
-  return group;
-}
-
 function buildTower(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'tower';
@@ -179,8 +137,7 @@ function buildTower(palette: Palette): THREE.Group {
   const body = new THREE.Mesh(new RoundedBoxGeometry(0.32, 0.85, SHELL_FRONT_Z * 2, 4, 0.09), shellMaterial);
   body.name = 'towerBody';
   // Geometry is centered on its own origin, so at z=0 its front face already
-  // lands exactly at SHELL_FRONT_Z — no extra offset needed (a stray one here
-  // previously pushed it 0.06 short of where the window math assumes).
+  // lands exactly at SHELL_FRONT_Z — no extra offset needed.
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
@@ -285,48 +242,6 @@ function buildTower(palette: Palette): THREE.Group {
   return group;
 }
 
-/** A grid of instanced key caps on a slab — one draw call for the whole board. */
-function buildKeyboard(palette: Palette): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'keyboard';
-  const boardMaterial = new THREE.MeshPhysicalMaterial({ color: palette.bezel, roughness: 0.5, clearcoat: 0.3 });
-  const slab = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.03, 0.3, 1, 0.01), boardMaterial);
-  group.add(slab);
-
-  const COLS = 15;
-  const ROWS = 5;
-  const KEY_SIZE = 0.045;
-  const GAP = 0.006;
-  const keyGeometry = new RoundedBoxGeometry(KEY_SIZE, 0.014, KEY_SIZE, 1, 0.003);
-  // vertexColors lets one InstancedMesh (one draw call) carry the reference's
-  // mixed white/cyan keycaps instead of a single flat color.
-  const keyMaterial = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.55, clearcoat: 0.4, vertexColors: true });
-  const keys = new THREE.InstancedMesh(keyGeometry, keyMaterial, COLS * ROWS);
-  keys.name = 'keys';
-  keys.castShadow = true;
-  const pitch = KEY_SIZE + GAP;
-  const originX = -((COLS - 1) * pitch) / 2;
-  const originZ = -((ROWS - 1) * pitch) / 2;
-  const m = new THREE.Matrix4();
-  const white = new THREE.Color(palette.keycap);
-  const accent = new THREE.Color(palette.keycapAccent);
-  let i = 0;
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      m.makeTranslation(originX + col * pitch, 0.022, originZ + row * pitch);
-      keys.setMatrixAt(i, m);
-      // A diagonal accent stripe, echoing the reference's colored key cluster.
-      keys.setColorAt(i, (col - row) % 5 === 0 ? accent : white);
-      i++;
-    }
-  }
-  keys.instanceMatrix.needsUpdate = true;
-  if (keys.instanceColor) keys.instanceColor.needsUpdate = true;
-  group.add(keys);
-
-  return group;
-}
-
 function buildMousepad(palette: Palette): THREE.Mesh {
   const pad = new THREE.Mesh(
     new RoundedBoxGeometry(0.42, 0.008, 0.3, 1, 0.02),
@@ -335,47 +250,6 @@ function buildMousepad(palette: Palette): THREE.Mesh {
   pad.name = 'mousepad';
   pad.receiveShadow = true;
   return pad;
-}
-
-function buildMouse(palette: Palette): THREE.Mesh {
-  const mouse = new THREE.Mesh(
-    new RoundedBoxGeometry(0.075, 0.035, 0.12, 2, 0.03),
-    new THREE.MeshPhysicalMaterial({ color: palette.bezel, roughness: 0.4, clearcoat: 0.5 }),
-  );
-  mouse.name = 'mouse';
-  mouse.castShadow = true;
-  mouse.receiveShadow = true;
-  return mouse;
-}
-
-
-
-function buildLaptop(palette: Palette): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'laptop';
-  // The reference's laptop is brushed aluminum, not a dark shell — the one
-  // desk object that reads as a distinct light-metal material.
-  const material = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(palette.tower).multiplyScalar(0.92),
-    roughness: 0.35,
-    metalness: 0.6,
-    clearcoat: 0.4,
-  });
-
-  const base = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.018, 0.24, 1, 0.015), material);
-  base.castShadow = true;
-  base.receiveShadow = true;
-  group.add(base);
-
-  const screen = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.22, 0.012, 1, 0.015), material);
-  screen.name = 'laptopScreen';
-  // Hinged open: pivot from the base's back edge, tilted well past vertical.
-  screen.position.set(0, 0.1, -0.114);
-  screen.rotation.x = THREE.MathUtils.degToRad(-100);
-  screen.castShadow = true;
-  group.add(screen);
-
-  return group;
 }
 
 function buildTablet(palette: Palette): THREE.Mesh {
@@ -436,82 +310,6 @@ function buildPenCup(palette: Palette): THREE.Group {
   return group;
 }
 
-function buildSucculent(palette: Palette): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'succulent';
-  const pot = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.032, 0.026, 0.045, 16),
-    new THREE.MeshStandardMaterial({ color: palette.pot, roughness: 0.6 }),
-  );
-  pot.position.y = 0.0225;
-  pot.castShadow = true;
-  pot.receiveShadow = true;
-  group.add(pot);
-
-  const plant = new THREE.Mesh(
-    new THREE.SphereGeometry(0.03, 8, 6),
-    new THREE.MeshStandardMaterial({ color: palette.cactus, roughness: 0.85 }),
-  );
-  plant.position.y = 0.06;
-  plant.scale.y = 0.8;
-  plant.castShadow = true;
-  group.add(plant);
-
-  return group;
-}
-
-function buildShelf(palette: Palette): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'shelf';
-  const woodMaterial = new THREE.MeshPhysicalMaterial({
-    color: palette.wood,
-    roughness: 0.5,
-    clearcoat: 0.3,
-  });
-
-  const plank = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.04, 0.22, 1, 0.015), woodMaterial);
-  plank.castShadow = true;
-  plank.receiveShadow = true;
-  group.add(plank);
-
-  const books = new THREE.Group();
-  books.name = 'books';
-  const bookColors = [palette.bookA, palette.bookB, palette.bookC];
-  let bx = -0.45;
-  for (const color of bookColors) {
-    const w = 0.05;
-    const book = new THREE.Mesh(
-      new RoundedBoxGeometry(w, 0.18, 0.16, 1, 0.008),
-      new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.7), roughness: 0.7 }),
-    );
-    book.position.set(bx, 0.11, 0);
-    book.castShadow = true;
-    books.add(book);
-    bx += w + 0.01;
-  }
-  books.position.y = 0.02;
-  group.add(books);
-
-  const cactus = new THREE.Group();
-  cactus.name = 'cactus';
-  const pot = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.035, 0.03, 0.05, 12),
-    new THREE.MeshStandardMaterial({ color: palette.pot, roughness: 0.6 }),
-  );
-  pot.position.y = 0.045;
-  cactus.add(pot);
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.022, 0.07, 4, 8),
-    new THREE.MeshStandardMaterial({ color: palette.cactus, roughness: 0.7 }),
-  );
-  body.position.y = 0.11;
-  cactus.add(body);
-  cactus.position.set(0.4, 0.02, 0);
-  group.add(cactus);
-
-  return group;
-}
-
 /** A framed poster: a white frame behind a slightly smaller, inset colored face. */
 function buildPoster(faceColor: THREE.ColorRepresentation, frameColor: THREE.ColorRepresentation): THREE.Group {
   const group = new THREE.Group();
@@ -527,49 +325,6 @@ function buildPoster(faceColor: THREE.ColorRepresentation, frameColor: THREE.Col
   face.position.z = 0.011;
   group.add(face);
   return group;
-}
-
-function buildMonstera(palette: Palette): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'monstera';
-  const pot = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.13, 0.22, 20),
-    new THREE.MeshStandardMaterial({ color: palette.pot, roughness: 0.6 }),
-  );
-  pot.position.y = 0.11;
-  pot.castShadow = true;
-  pot.receiveShadow = true;
-  group.add(pot);
-
-  // A deeper, larger-leafed green than the desk succulent/cactus — same
-  // family, distinct plant.
-  const leafMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.cactus).multiplyScalar(0.55), roughness: 0.85 });
-  const leafSpots: [number, number, number, number][] = [
-    [0, 0.55, 0, 0.22],
-    [0.12, 0.72, 0.08, 0.17],
-    [-0.14, 0.68, -0.06, 0.18],
-    [0.02, 0.9, -0.1, 0.15],
-  ];
-  for (const [x, y, z, r] of leafSpots) {
-    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), leafMaterial);
-    leaf.position.set(x, y, z);
-    leaf.scale.set(1, 1.3, 0.6);
-    leaf.castShadow = true;
-    group.add(leaf);
-  }
-
-  return group;
-}
-
-function buildBin(palette: Palette): THREE.Mesh {
-  const bin = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.12, 0.09, 0.22, 16, 1, true),
-    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.tower).multiplyScalar(0.65), roughness: 0.35, metalness: 0.7, side: THREE.DoubleSide }),
-  );
-  bin.name = 'bin';
-  bin.castShadow = true;
-  bin.receiveShadow = true;
-  return bin;
 }
 
 function buildSlippers(palette: Palette): THREE.Group {
@@ -599,72 +354,145 @@ export type Scene = {
   homeCameraPosition: THREE.Vector3;
 };
 
-export function buildScene(palette: Palette): Scene {
+const MODEL = (name: string) => `/models/kenney/${name}.glb`;
+
+// Kenney's own internal unit doesn't match this scene's — calibrated once,
+// visually, against the desk (see tasks/plan.md, "Loading a real 3D model").
+// Not every prop shares one scale: the kit isn't internally consistent across
+// categories (a chair and a bookcase aren't sized relative to the desk the
+// way real furniture would be), so a few props get their own tuned factor.
+const FURNITURE_SCALE = 4.3;
+const CHAIR_SCALE = 1.7;
+const SHELF_SCALE = 0.95;
+// trashcan.glb measured taller than the desk itself (1.84 units) at
+// FURNITURE_SCALE — another model the kit didn't author to the same internal
+// scale as the desk/rug/monstera. Scaled down to sit at knee height instead.
+const BIN_SCALE = 1.2;
+
+export async function buildScene(palette: Palette): Promise<Scene> {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(palette.wall);
   scene.fog = new THREE.Fog(new THREE.Color(palette.wall).getHex(), 6, 15);
 
   scene.add(buildRoom(palette));
-  scene.add(buildRug(palette));
-  const chair = buildChair(palette);
-  chair.position.set(0.3, 0, 1.35);
+
+  // The rug grounds first so later floor objects (chair) can sit visibly on it.
+  const rug = await loadModel(MODEL('rugRound'), palette, {
+    carpet: palette.rug, carpetDarker: palette.rug, carpetWhite: palette.rug,
+  });
+  rug.scale.setScalar(FURNITURE_SCALE);
+  groundAt(rug, 0.3, 1.4);
+  rug.name = 'rug';
+  scene.add(rug);
+
+  // The kit's chair and desk aren't proportioned to the same internal scale —
+  // measured (see git history for the calibration pass): chairDesk at
+  // FURNITURE_SCALE alone comes out taller than the desk itself. Its own,
+  // separately-tuned scale.
+  const chair = await loadModel(MODEL('chairDesk'), palette, {
+    metalMedium: palette.chair, carpet: palette.chair,
+  });
+  chair.scale.setScalar(CHAIR_SCALE);
+  groundAt(chair, 0.25, 1.5);
+  chair.name = 'chair';
   scene.add(chair);
 
-  const desk = buildDesk(palette);
+  // The desk anchors every object that sits on top of it — its real (loaded,
+  // measured) top surface height, not a guessed constant.
+  const desk = await loadModel(MODEL('desk'), palette);
+  desk.scale.setScalar(FURNITURE_SCALE);
+  const deskBox = groundAt(desk, 0, 0);
+  desk.name = 'desk';
   scene.add(desk);
+  const deskTop = deskBox.max.y;
 
   const monitor = buildMonitor(palette);
-  monitor.group.position.set(0, 1.14, -0.35);
+  monitor.group.position.set(0, deskTop + 0.49, -0.35);
   scene.add(monitor.group);
 
   const tower = buildTower(palette);
-  tower.position.set(1.35, 0.435 + 0.66, -0.35);
+  tower.position.set(1.35, deskTop + 0.435, -0.35);
   scene.add(tower);
 
-  const keyboard = buildKeyboard(palette);
-  keyboard.position.set(0, 0.68, 0.35);
+  const keyboard = await loadModel(MODEL('computerKeyboard'), palette);
+  keyboard.scale.setScalar(FURNITURE_SCALE);
+  groundAt(keyboard, 0, 0.35, deskTop);
+  keyboard.name = 'keyboard';
   scene.add(keyboard);
 
   const mousepad = buildMousepad(palette);
-  mousepad.position.set(0.62, 0.664, 0.3);
+  mousepad.position.set(0.62, deskTop + 0.004, 0.3);
   scene.add(mousepad);
 
-  const mouse = buildMouse(palette);
-  mouse.position.set(0.62, 0.685, 0.3);
+  const mouse = await loadModel(MODEL('computerMouse'), palette);
+  mouse.scale.setScalar(FURNITURE_SCALE);
   mouse.rotation.y = THREE.MathUtils.degToRad(8);
+  groundAt(mouse, 0.62, 0.3, deskTop + 0.02);
+  mouse.name = 'mouse';
   scene.add(mouse);
 
-  const laptop = buildLaptop(palette);
-  laptop.scale.setScalar(1.7);
-  laptop.position.set(-1.05, 0.669, 0.1);
-  laptop.rotation.y = THREE.MathUtils.degToRad(12);
+  // laptop.glb's open footprint measured far wider than the desk's own left
+  // half at FURNITURE_SCALE (1.33 units — it swallowed the keyboard, tablet,
+  // mug and pen cup entirely, and hung 0.13 units off the desk's own edge).
+  // A dedicated smaller scale, so the left side of the desk has room for its
+  // other occupants instead of one prop covering all of them.
+  const laptop = await loadModel(MODEL('laptop'), palette);
+  laptop.scale.setScalar(3.2);
+  laptop.rotation.y = THREE.MathUtils.degToRad(6);
+  groundAt(laptop, -1.05, -0.15, deskTop);
+  laptop.name = 'laptop';
   scene.add(laptop);
 
   const tablet = buildTablet(palette);
   tablet.scale.setScalar(1.7);
-  tablet.position.set(-0.62, 0.666, 0.42);
   tablet.rotation.y = THREE.MathUtils.degToRad(-6);
+  tablet.position.set(-1.05, deskTop + 0.006, 0.6);
   scene.add(tablet);
 
   const mug = buildMug(palette);
   mug.scale.setScalar(1.6);
-  mug.position.set(-1.15, 0.66, 0.5);
+  mug.position.set(-1.45, deskTop, 0.55);
   scene.add(mug);
 
   const penCup = buildPenCup(palette);
   penCup.scale.setScalar(1.6);
-  penCup.position.set(-1.35, 0.66, -0.35);
+  penCup.position.set(-1.45, deskTop, -0.7);
   scene.add(penCup);
 
-  const succulent = buildSucculent(palette);
-  succulent.scale.setScalar(1.6);
-  succulent.position.set(1.05, 0.66, -0.5);
+  // Front-right corner of the desk, clear of the tower's footprint — at its
+  // old spot (tucked behind the tower in x and z) the isometric camera's
+  // (1,1,1) view direction let the tower fully occlude it.
+  const succulent = await loadModel(MODEL('plantSmall1'), palette, { wood: palette.pot, woodDark: palette.pot });
+  succulent.scale.setScalar(FURNITURE_SCALE * 0.7);
+  groundAt(succulent, 1.35, 0.55, deskTop);
+  succulent.name = 'succulent';
   scene.add(succulent);
 
-  // Wall dressing, mounted on the back wall (z = ROOM_BACK_Z) above the desk.
-  const shelf = buildShelf(palette);
-  shelf.position.set(0.6, 2.15, ROOM_BACK_Z + 0.12);
+  // Wall dressing, mounted on the back wall above the desk.
+  // bookcaseOpen.glb is a full floor-to-shoulder bookcase in the kit's own
+  // terms, not a small floating shelf — using it at FURNITURE_SCALE produced
+  // something the size of a ladder. Scaled down hard and mounted on the wall
+  // (centered in x, its bottom edge at a chosen height, its back flush against
+  // the wall) rather than floor-grounded.
+  const shelf = await loadModel(MODEL('bookcaseOpen'), palette);
+  shelf.scale.setScalar(SHELF_SCALE);
+  const shelfBox = mountOnWall(shelf, 0.6, 2.0, ROOM_BACK_Z + 0.02);
+  shelf.name = 'shelf';
   scene.add(shelf);
+
+  const books = await loadModel(MODEL('books'), palette, {
+    carpetDarker: palette.bookB, carpetWhite: palette.bookA, plant: palette.bookC,
+  });
+  books.scale.setScalar(SHELF_SCALE);
+  mountOnWall(books, 0.35, shelfBox.max.y - 0.02, ROOM_BACK_Z + 0.06);
+  books.name = 'books';
+  scene.add(books);
+
+  const shelfCactus = await loadModel(MODEL('plantSmall1'), palette);
+  shelfCactus.scale.setScalar(SHELF_SCALE * 0.8);
+  mountOnWall(shelfCactus, 0.95, shelfBox.max.y - 0.02, ROOM_BACK_Z + 0.06);
+  shelfCactus.name = 'cactus';
+  scene.add(shelfCactus);
 
   // Poster A: a dark, moody face (the reference's illustrated bottle poster) —
   // a solid color stands in for the artwork itself; recreating someone else's
@@ -698,12 +526,16 @@ export function buildScene(palette: Palette): Scene {
   posterMark.position.set(-1.4, 1.62, ROOM_BACK_Z + 0.02);
   scene.add(posterMark);
 
-  const monstera = buildMonstera(palette);
-  monstera.position.set(-2.5, 0, -0.6);
+  const monstera = await loadModel(MODEL('pottedPlant'), palette, { wood: palette.pot, woodDark: palette.pot });
+  monstera.scale.setScalar(FURNITURE_SCALE);
+  groundAt(monstera, -2.5, -0.6);
+  monstera.name = 'monstera';
   scene.add(monstera);
 
-  const bin = buildBin(palette);
-  bin.position.set(1.55, 0.11, 0.95);
+  const bin = await loadModel(MODEL('trashcan'), palette);
+  bin.scale.setScalar(BIN_SCALE);
+  groundAt(bin, 1.55, 0.95);
+  bin.name = 'bin';
   scene.add(bin);
 
   const slippers = buildSlippers(palette);
@@ -721,10 +553,10 @@ export function buildScene(palette: Palette): Scene {
 
   const key = new THREE.SpotLight(0xffffff, 0.55, 9, Math.PI / 4.2, 0.45);
   key.position.set(2, 4, 2.5);
-  // Aim at the desk SURFACE, not the desk group's origin (which sits at floor
-  // level) — otherwise everything actually resting on the desk reads dim.
+  // Aim at the desk SURFACE, not the desk's own group origin — otherwise
+  // everything actually resting on the desk reads dim.
   const keyTarget = new THREE.Object3D();
-  keyTarget.position.set(0, 0.66, -0.1);
+  keyTarget.position.set(0, deskTop, -0.1);
   scene.add(keyTarget);
   key.target = keyTarget;
   key.castShadow = true;

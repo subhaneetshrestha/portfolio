@@ -10,24 +10,40 @@ const palette = {
   mousepad: '#6B6E7A', keycap: '#F5F3EA', keycapAccent: '#4FC3E0', window: '#FBF6E8',
 };
 
+// Real GLB loading (network fetch + binary parse) is three.js's own concern,
+// exercised for real by `npm run shoot`, not something jsdom should attempt —
+// see models.test.ts, which tests loadModel()'s own recoloring/shadow logic
+// directly. Here, buildScene() just needs *some* grounded, boxy geometry back
+// from each load so its positioning math (groundAt, deskTop, etc.) runs the
+// same as it would against a real model. RoundedBoxGeometry, not BoxGeometry,
+// so the "every edge is rounded" test below stays meaningful.
+vi.mock('./models', () => ({
+  loadModel: vi.fn(() => {
+    const group = new THREE.Group();
+    const mesh = new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.1, 0.2, 1, 0.02), new THREE.MeshStandardMaterial());
+    group.add(mesh);
+    return Promise.resolve(group);
+  }),
+}));
+
 describe('buildScene', () => {
-  it('assembles a desk, a monitor, a tower, a keyboard, a mousepad and a mouse into one scene', () => {
-    const { scene } = buildScene(palette);
+  it('assembles a desk, a monitor, a tower, a keyboard, a mousepad and a mouse into one scene', async () => {
+    const { scene } = await buildScene(palette);
     for (const name of ['desk', 'monitor', 'tower', 'keyboard', 'mousepad', 'mouse', 'room']) {
       expect(scene.getObjectByName(name), name).toBeTruthy();
     }
   });
 
-  it('gives the tower the reference\'s magenta side glow, sampled directly', () => {
-    const { scene } = buildScene(palette);
+  it('gives the tower the reference\'s magenta side glow, sampled directly', async () => {
+    const { scene } = await buildScene(palette);
     const glow = scene.getObjectByName('towerGlow') as THREE.Mesh;
     expect(glow).toBeTruthy();
     const mat = glow.material as THREE.MeshBasicMaterial;
     expect(mat.color.getHexString()).toBe('e405a3'); // palette.glow
   });
 
-  it('gives the tower a recessed glass window, not a flat painted line', () => {
-    const { scene } = buildScene(palette);
+  it('gives the tower a recessed glass window, not a flat painted line', async () => {
+    const { scene } = await buildScene(palette);
     const tower = scene.getObjectByName('tower') as THREE.Group;
     const window_ = tower.getObjectByName('towerWindow') as THREE.Mesh;
     const frame = tower.getObjectByName('towerFrame') as THREE.Group;
@@ -39,8 +55,8 @@ describe('buildScene', () => {
     expect(window_.position.z).toBeLessThan(frameZ);
   });
 
-  it('gives the tower vent slats and a physical power button, not just a flat shell', () => {
-    const { scene } = buildScene(palette);
+  it('gives the tower vent slats and a physical power button, not just a flat shell', async () => {
+    const { scene } = await buildScene(palette);
     const tower = scene.getObjectByName('tower') as THREE.Group;
     const vents = tower.getObjectByName('towerVents') as THREE.Group;
     expect(vents).toBeTruthy();
@@ -48,35 +64,21 @@ describe('buildScene', () => {
     expect(tower.getObjectByName('towerButton')).toBeTruthy();
   });
 
-  it('builds the keyboard as one instanced draw call, not one mesh per key', () => {
-    const { scene } = buildScene(palette);
-    const keyboard = scene.getObjectByName('keyboard') as THREE.Group;
-    let instanced: THREE.InstancedMesh | null = null;
-    let plainKeyMeshes = 0;
-    keyboard.traverse((o) => {
-      if (o instanceof THREE.InstancedMesh) instanced = o;
-      else if (o instanceof THREE.Mesh && o.name === 'key') plainKeyMeshes++;
-    });
-    expect(instanced).toBeTruthy();
-    expect(instanced!.count).toBeGreaterThan(20); // a real key grid, not a token handful
-    expect(plainKeyMeshes).toBe(0);
-  });
-
-  it('paints the background from the palette, not a hardcoded color', () => {
-    const { scene } = buildScene(palette);
+  it('paints the background from the palette, not a hardcoded color', async () => {
+    const { scene } = await buildScene(palette);
     expect((scene.background as THREE.Color).getHexString()).toBe('f4f0e3'); // palette.wall
   });
 
-  it('gives the tower a green power LED, sampled from the reference', () => {
-    const { scene } = buildScene(palette);
+  it('gives the tower a green power LED, sampled from the reference', async () => {
+    const { scene } = await buildScene(palette);
     const led = scene.getObjectByName('led') as THREE.Mesh;
     expect(led).toBeTruthy();
     const mat = led.material as THREE.MeshBasicMaterial;
     expect(mat.color.getHexString()).toBe('46d160');
   });
 
-  it('starts an orthographic camera at a true isometric angle, looking toward the desk', () => {
-    const { camera, homeCameraPosition } = buildScene(palette);
+  it('starts an orthographic camera at a true isometric angle, looking toward the desk', async () => {
+    const { camera, homeCameraPosition } = await buildScene(palette);
     expect(camera).toBeInstanceOf(THREE.OrthographicCamera);
     expect(camera.position.equals(homeCameraPosition)).toBe(true);
     // True isometric: equal x/y/z offsets from the look-at point (elevation
@@ -87,8 +89,8 @@ describe('buildScene', () => {
     expect(offset.x).toBeGreaterThan(0);
   });
 
-  it('sizes the orthographic frustum from the given aspect ratio, keeping the vertical extent fixed', () => {
-    const { camera } = buildScene(palette);
+  it('sizes the orthographic frustum from the given aspect ratio, keeping the vertical extent fixed', async () => {
+    const { camera } = await buildScene(palette);
     applyAspect(camera, 2);
     const wide = camera.right - camera.left;
     const height = camera.top - camera.bottom;
@@ -98,8 +100,11 @@ describe('buildScene', () => {
     expect(wide).toBeGreaterThan(square); // wider aspect -> wider frustum
   });
 
-  it('rounds every visible box edge — no hard 90° corner survives', () => {
-    const { scene } = buildScene(palette);
+  it('rounds every hand-built box edge — no hard 90° corner survives on our own geometry', async () => {
+    // Loaded models (mocked here as RoundedBoxGeometry stand-ins; real ones are
+    // arbitrary BufferGeometry from glTF, never THREE.BoxGeometry) are outside
+    // this guarantee's scope — this checks the procedural parts we still hand-author.
+    const { scene } = await buildScene(palette);
     let sawBox = false;
     let sawRoundedBox = false;
     scene.traverse((o) => {
@@ -111,8 +116,8 @@ describe('buildScene', () => {
     expect(sawBox).toBe(false);
   });
 
-  it('never adds a shared object twice — every mesh has exactly one parent', () => {
-    const { scene } = buildScene(palette);
+  it('never adds a shared object twice — every mesh has exactly one parent', async () => {
+    const { scene } = await buildScene(palette);
     const seen = new Set<THREE.Object3D>();
     scene.traverse((o) => {
       expect(seen.has(o)).toBe(false);
@@ -121,25 +126,18 @@ describe('buildScene', () => {
   });
 });
 
-describe('buildScene — desk companions (Task 8c)', () => {
-  it('adds a laptop, a tablet, a mug, a pen cup and a succulent to the desk', () => {
-    const { scene } = buildScene(palette);
+describe('buildScene — desk companions', () => {
+  it('adds a laptop, a tablet, a mug, a pen cup and a succulent to the desk', async () => {
+    const { scene } = await buildScene(palette);
     for (const name of ['laptop', 'tablet', 'mug', 'penCup', 'succulent']) {
       expect(scene.getObjectByName(name), name).toBeTruthy();
     }
   });
 
-  it('opens the laptop screen at an angle, not lying flat like the base', () => {
-    const { scene } = buildScene(palette);
-    const laptop = scene.getObjectByName('laptop') as THREE.Group;
-    const screen = laptop.getObjectByName('laptopScreen') as THREE.Mesh;
-    expect(screen).toBeTruthy();
-    expect(Math.abs(screen.rotation.x)).toBeGreaterThan(0.3); // meaningfully tilted open
-  });
-
-  it('keeps every desk companion above the desk surface, not sunk into it', () => {
-    const { scene } = buildScene(palette);
-    const deskTop = 0.66; // desk slab top surface, from buildDesk()
+  it('keeps every desk companion at or above the desk\'s own (measured) top surface', async () => {
+    const { scene } = await buildScene(palette);
+    const desk = scene.getObjectByName('desk')!;
+    const deskTop = new THREE.Box3().setFromObject(desk).max.y;
     for (const name of ['laptop', 'tablet', 'mug', 'penCup', 'succulent']) {
       const obj = scene.getObjectByName(name)!;
       expect(obj.position.y, name).toBeGreaterThanOrEqual(deskTop - 0.01);
@@ -147,50 +145,49 @@ describe('buildScene — desk companions (Task 8c)', () => {
   });
 });
 
-describe('buildScene — room and furniture (Task 8d)', () => {
-  it('builds a back wall and a side wall so the scene reads as a room, not a void', () => {
-    const { scene } = buildScene(palette);
+describe('buildScene — room and furniture', () => {
+  it('builds a back wall and a side wall so the scene reads as a room, not a void', async () => {
+    const { scene } = await buildScene(palette);
     const room = scene.getObjectByName('room') as THREE.Group;
     expect(room.getObjectByName('backWall')).toBeTruthy();
     expect(room.getObjectByName('sideWall')).toBeTruthy();
   });
 
-  it('gives the window a daylight tone, not the old night-cyan glow', () => {
-    const { scene } = buildScene(palette);
+  it('gives the window a daylight tone, not the old night-cyan glow', async () => {
+    const { scene } = await buildScene(palette);
     const window_ = scene.getObjectByName('window') as THREE.Mesh;
     expect(window_).toBeTruthy();
     const mat = window_.material as THREE.MeshBasicMaterial;
     expect(mat.color.getHexString()).toBe('fbf6e8'); // palette.window
   });
 
-  it('lays a rug on the floor and seats a chair at the desk', () => {
-    const { scene } = buildScene(palette);
+  it('lays a rug on the floor and seats a chair at the desk, both real loaded models', async () => {
+    const { scene } = await buildScene(palette);
     expect(scene.getObjectByName('rug')).toBeTruthy();
     expect(scene.getObjectByName('chair')).toBeTruthy();
   });
 });
 
-describe('buildScene — dressing (Task 8e)', () => {
-  it('mounts a shelf with books and a cactus, and two posters, on the back wall', () => {
-    const { scene } = buildScene(palette);
-    for (const name of ['shelf', 'posterA', 'posterB']) {
+describe('buildScene — dressing', () => {
+  it('mounts a shelf with books and a cactus, and two posters, on the back wall', async () => {
+    const { scene } = await buildScene(palette);
+    // books and the shelf cactus are loaded as their own scene objects (not
+    // nested under the shelf group) so each can be recolored independently.
+    for (const name of ['shelf', 'books', 'cactus', 'posterA', 'posterB']) {
       expect(scene.getObjectByName(name), name).toBeTruthy();
     }
-    const shelf = scene.getObjectByName('shelf') as THREE.Group;
-    expect(shelf.getObjectByName('books')).toBeTruthy();
-    expect(shelf.getObjectByName('cactus')).toBeTruthy();
   });
 
-  it('carries the brand mark on one poster, tinted from the tower\'s own glow', () => {
-    const { scene } = buildScene(palette);
+  it('carries the brand mark on one poster, tinted from the tower\'s own glow', async () => {
+    const { scene } = await buildScene(palette);
     const mark = scene.getObjectByName('posterMark') as THREE.Mesh;
     expect(mark).toBeTruthy();
     const mat = mark.material as THREE.MeshBasicMaterial;
     expect(mat.color.getHexString()).toBe('e405a3'); // palette.glow
   });
 
-  it('adds a monstera, a bin and a pair of slippers to finish the room', () => {
-    const { scene } = buildScene(palette);
+  it('adds a monstera, a bin and a pair of slippers to finish the room', async () => {
+    const { scene } = await buildScene(palette);
     for (const name of ['monstera', 'bin', 'slippers']) {
       expect(scene.getObjectByName(name), name).toBeTruthy();
     }

@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import * as THREE from 'three';
 import { PROMPT } from '../content/resume';
 import Landing from './Landing';
 
@@ -20,6 +21,27 @@ vi.mock('../three/renderer', () => ({
   })),
 }));
 
+// buildScene() now loads real GLB files (src/three/models.ts) — network fetch
+// and binary parse, exercised for real by `npm run shoot`, not jsdom. Mocking
+// it here (keeping every other export of the module real) tests Landing's own
+// mount/resize/pointer/teardown orchestration around whatever scene comes back,
+// same reasoning as the createRenderer mock above.
+vi.mock('../three/scene', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../three/scene')>();
+  return {
+    ...actual,
+    buildScene: vi.fn(async () => ({
+      scene: new THREE.Scene(),
+      camera: new THREE.OrthographicCamera(),
+      monitor: { group: new THREE.Group(), screen: new THREE.Mesh(), screenMaterial: new THREE.MeshBasicMaterial() },
+      homeCameraPosition: new THREE.Vector3(0.1, 1.5, 2.7),
+    })),
+  };
+});
+
+/** Flushes the microtask buildScene() resolves on, so the effect's .then() runs. */
+const flush = () => act(async () => {});
+
 describe('Landing', () => {
   beforeEach(() => vi.clearAllMocks()); // each test mounts its own renderer; the mocks are file-shared
 
@@ -37,6 +59,7 @@ describe('Landing', () => {
   it('mounts the render pipeline on its canvas and disposes it on unmount', async () => {
     const { createRenderer } = await import('../three/renderer');
     const { unmount, container } = render(<Landing />);
+    await flush();
     expect(container.querySelector('canvas')).toBeTruthy();
     expect(createRenderer).toHaveBeenCalledOnce();
     expect(dispose).not.toHaveBeenCalled();
@@ -44,13 +67,21 @@ describe('Landing', () => {
     expect(dispose).toHaveBeenCalledOnce();
   });
 
-  it('caps the device pixel ratio at 2 even behind a high-DPR display', () => {
+  it('tears down cleanly even if unmounted before the scene finishes loading', async () => {
+    const { unmount } = render(<Landing />);
+    unmount(); // no flush — buildScene's promise hasn't resolved yet
+    await flush();
+    expect(dispose).not.toHaveBeenCalled(); // createRenderer was never even reached
+  });
+
+  it('caps the device pixel ratio at 2 even behind a high-DPR display', async () => {
     Object.defineProperty(window, 'devicePixelRatio', { value: 4, configurable: true });
     render(<Landing />);
+    await flush();
     expect(setPixelRatio).toHaveBeenCalledWith(2);
   });
 
-  it('renders nothing under prefers-reduced-motion beyond the static frame — no ongoing animation loop', () => {
+  it('renders nothing under prefers-reduced-motion beyond the static frame — no ongoing animation loop', async () => {
     const raf = vi.spyOn(window, 'requestAnimationFrame');
     vi.stubGlobal('matchMedia', (q: string) => ({
       matches: q.includes('reduce'),
@@ -59,6 +90,7 @@ describe('Landing', () => {
       removeEventListener: vi.fn(),
     }));
     render(<Landing />);
+    await flush();
     expect(composerRender).toHaveBeenCalledOnce(); // one static frame
     expect(raf).not.toHaveBeenCalled(); // but no rAF loop kept running
     vi.unstubAllGlobals();
