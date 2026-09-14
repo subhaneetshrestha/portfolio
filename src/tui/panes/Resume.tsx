@@ -42,7 +42,7 @@ export function Resume() {
       {experience.map((r) => (
         <section key={r.company + r.title}>
           <h3>{r.company} — {r.title}</h3>
-          <p className={s.meta}>{field(r.start)} – {r.end}</p>
+          <p className={s.meta}>{field(r.start)} – {r.end}{r.location ? ` · ${r.location}` : ''}</p>
           <ul>
             {r.bullets.map((b, i) => <li key={i}>{field(b)}</li>)}
           </ul>

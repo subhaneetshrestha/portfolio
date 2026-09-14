@@ -18,7 +18,7 @@ export function resumeText({ profile, experience, education, skills }: Resume = 
     '',
     'EXPERIENCE',
     ...experience.flatMap((r) => [
-      `${r.company} — ${r.title} (${text(r.start)} – ${r.end})`,
+      `${r.company} — ${r.title}${r.location ? `, ${r.location}` : ''} (${text(r.start)} – ${r.end})`,
       ...r.bullets.map((b) => `  - ${text(b)}`),
     ]),
     '',

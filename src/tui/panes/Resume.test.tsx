@@ -21,19 +21,32 @@ describe('Resume pane', () => {
     expect(screen.getByText(`${resume.profile.title} · ${resume.profile.location}`)).toBeTruthy();
   });
 
-  it('renders every TODO as a visible placeholder and never leaks the raw string', () => {
-    // The data still carries TODOs; this test is only meaningful while it does.
-    expect(resume.experience[0]!.start).toBe(TODO);
-    render(<Resume />);
+  it('renders a TODO field as a visible placeholder and never leaks the raw string', async () => {
+    // A fixture, not the live resume: the placeholder behaviour must hold whether
+    // or not the real content currently has a gap (it has none right now).
+    vi.resetModules();
+    vi.doMock('../../content/resume', () => ({
+      resume: {
+        profile: { name: 'X', handle: 'x', title: 'T', company: 'C', location: 'L', bio: '', summary: '', links: [] },
+        skills: [],
+        experience: [{ company: 'Acme', title: 'Eng', start: TODO, end: 'present', bullets: [TODO] }],
+        education: [{ school: TODO, degree: TODO, start: TODO, end: TODO }],
+      },
+    }));
+    const { Resume: FixtureResume } = await import('./Resume');
+    render(<FixtureResume />);
     expect(screen.getAllByText('[to be filled]').length).toBeGreaterThan(0);
     expect(screen.queryAllByLabelText('to be filled')).toHaveLength(0);
     expect(document.body.textContent).not.toContain('TODO');
+    vi.doUnmock('../../content/resume');
+    vi.resetModules();
   });
 
-  it('renders the first role and skill groups from the data', () => {
+  it('renders the first role, its location, and skill groups from the data', () => {
     render(<Resume />);
     const role = resume.experience[0]!;
     expect(screen.getByText(role.company, { exact: false })).toBeTruthy();
+    if (role.location) expect(screen.getByText(role.location, { exact: false })).toBeTruthy();
     for (const group of resume.skills) {
       expect(screen.getByText(group.name)).toBeTruthy();
       expect(screen.getByText(group.items.join(', '))).toBeTruthy();

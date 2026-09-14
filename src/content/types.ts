@@ -19,6 +19,7 @@ export type Role = {
   title: string;
   start: string | Todo;
   end: string;
+  location?: string;
   bullets: (string | Todo)[];
 };
 
