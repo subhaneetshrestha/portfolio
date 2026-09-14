@@ -19,7 +19,11 @@ const ISO_DIRECTION = new THREE.Vector3(1, 1, 1).normalize();
 const ISO_DISTANCE = 6.2;
 
 /** Vertical world-space height the frustum shows at aspect 1; width follows aspect. */
-const FRUSTUM_HEIGHT = 4.2;
+const FRUSTUM_HEIGHT = 7.5;
+
+const ROOM_HEIGHT = 4.5;
+const ROOM_BACK_Z = -3;
+const ROOM_LEFT_X = -3.6;
 
 function buildRoom(palette: Palette): THREE.Group {
   const group = new THREE.Group();
@@ -43,6 +47,83 @@ function buildRoom(palette: Palette): THREE.Group {
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   group.add(floor);
+
+  // Two walls meeting in a corner behind/beside the desk — enough for the isometric
+  // camera (looking from the +x/+y/+z octant) to read this as a room, not a void.
+  const wallMaterial = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(palette.bg).multiplyScalar(3.4),
+    roughness: 0.98,
+  });
+
+  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(9, ROOM_HEIGHT), wallMaterial);
+  backWall.name = 'backWall';
+  backWall.position.set(0, ROOM_HEIGHT / 2, ROOM_BACK_Z);
+  backWall.receiveShadow = true;
+  group.add(backWall);
+
+  const sideWall = new THREE.Mesh(new THREE.PlaneGeometry(7, ROOM_HEIGHT), wallMaterial);
+  sideWall.name = 'sideWall';
+  sideWall.rotation.y = Math.PI / 2;
+  sideWall.position.set(ROOM_LEFT_X, ROOM_HEIGHT / 2, 0);
+  sideWall.receiveShadow = true;
+  group.add(sideWall);
+
+  // A cool night window glow on the side wall — the counterpoint to the monitor's
+  // warm key light, in the same direction as the existing secondary-tinted rim light.
+  const windowMaterial = new THREE.MeshBasicMaterial({ color: palette.secondary });
+  const windowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.5), windowMaterial);
+  windowMesh.name = 'window';
+  windowMesh.rotation.y = Math.PI / 2;
+  windowMesh.position.set(ROOM_LEFT_X + 0.01, 2.3, 0.8);
+  group.add(windowMesh);
+
+  return group;
+}
+
+function buildRug(palette: Palette): THREE.Mesh {
+  // Muted with an amber undertone — the reference's orange shag rug, translated
+  // into something that sits quietly in the dark palette instead of competing with it.
+  const rugColor = new THREE.Color(palette.fg).multiplyScalar(0.14).lerp(new THREE.Color(palette.accent), 0.16);
+  const rug = new THREE.Mesh(
+    new THREE.CircleGeometry(1.1, 40),
+    new THREE.MeshStandardMaterial({ color: rugColor, roughness: 1 }),
+  );
+  rug.name = 'rug';
+  rug.rotation.x = -Math.PI / 2;
+  rug.position.set(0.3, 0.002, 1.4);
+  rug.receiveShadow = true;
+  return rug;
+}
+
+function buildChair(palette: Palette): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'chair';
+  const material = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(palette.bg).multiplyScalar(2.5),
+    roughness: 0.6,
+    clearcoat: 0.3,
+  });
+
+  const seat = new THREE.Mesh(new RoundedBoxGeometry(0.55, 0.08, 0.5, 2, 0.06), material);
+  seat.position.y = 0.5;
+  seat.castShadow = true;
+  seat.receiveShadow = true;
+  group.add(seat);
+
+  const back = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.65, 0.08, 2, 0.06), material);
+  back.position.set(0, 0.85, -0.24);
+  back.rotation.x = THREE.MathUtils.degToRad(-8);
+  back.castShadow = true;
+  group.add(back);
+
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 12), material);
+  post.position.y = 0.26;
+  group.add(post);
+
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 5), material);
+  base.position.y = 0.03;
+  base.receiveShadow = true;
+  group.add(base);
 
   return group;
 }
@@ -192,6 +273,10 @@ export function buildScene(palette: Palette): Scene {
   scene.fog = new THREE.Fog(new THREE.Color(palette.bg).getHex(), 5, 13);
 
   scene.add(buildRoom(palette));
+  scene.add(buildRug(palette));
+  const chair = buildChair(palette);
+  chair.position.set(0.3, 0, 1.35);
+  scene.add(chair);
 
   const desk = buildDesk(palette);
   scene.add(desk);

@@ -420,8 +420,20 @@ clean build, entry chunk still 0 occurrences of `WebGLRenderer`.
 ### Task 8c — Desk companions · not started
 Laptop, tablet, mug, pen cup, small succulent.
 
-### Task 8d — Room shell and furniture · not started
-Walls, floor, skirting, window (cool night rim light), rug, ergonomic chair.
+### Task 8d — Room shell and furniture · DONE
+Two walls meeting in a corner (back + side) so the isometric camera reads a room instead of a
+void; a window on the side wall with a `--secondary`-tinted night glow. A rug (muted, amber
+undertone) and a simplified chair (seat/back/post/base) in front of the desk.
+
+Two real bugs the harness caught before either shipped:
+- The window rendered as a hard-edged wedge in the screen corner — the frustum (`FRUSTUM_HEIGHT`)
+  was sized to frame just the desk (4.2 world units) and the new room geometry mostly fell
+  outside it; only the window's corner poked into frame. Widened to 7.5 to actually show the room.
+- The chair was invisible — added to the scene with no `.position` set, so it sat at the world
+  origin (inside/behind the desk). Positioned at (0.3, 0, 1.35), on the rug, facing the monitor.
+- [x] Window light reads as the cool counterpoint to the monitor's glow
+- [x] Chair silhouette is recognisable at isometric framing
+
 
 ### Task 8e — Dressing · not started
 Shelf with books/cactus, two posters, monstera, bin, slippers, cables.

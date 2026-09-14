@@ -93,6 +93,29 @@ describe('buildScene', () => {
   });
 });
 
+describe('buildScene — room and furniture (Task 8d)', () => {
+  it('builds a back wall and a side wall so the scene reads as a room, not a void', () => {
+    const { scene } = buildScene(palette);
+    const room = scene.getObjectByName('room') as THREE.Group;
+    expect(room.getObjectByName('backWall')).toBeTruthy();
+    expect(room.getObjectByName('sideWall')).toBeTruthy();
+  });
+
+  it('gives the window a cool night glow tinted from the secondary token, not the primary one', () => {
+    const { scene } = buildScene(palette);
+    const window_ = scene.getObjectByName('window') as THREE.Mesh;
+    expect(window_).toBeTruthy();
+    const mat = window_.material as THREE.MeshBasicMaterial;
+    expect(mat.color.getHexString()).toBe('1793d1'); // palette.secondary
+  });
+
+  it('lays a rug on the floor and seats a chair at the desk', () => {
+    const { scene } = buildScene(palette);
+    expect(scene.getObjectByName('rug')).toBeTruthy();
+    expect(scene.getObjectByName('chair')).toBeTruthy();
+  });
+});
+
 describe('cappedDPR', () => {
   it('passes through anything at or below 2', () => {
     expect(cappedDPR(1)).toBe(1);
