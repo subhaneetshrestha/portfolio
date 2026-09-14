@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { buildCRT } from './crt';
 
 const palette = { bg: '#0B0D10', fg: '#C9D1D9', primary: '#00ADD8', accent: '#FFB454', secondary: '#1793D1' };
@@ -14,6 +15,15 @@ describe('buildCRT', () => {
     let found = false;
     group.traverse((o) => { if (o === screen) found = true; });
     expect(found).toBe(true);
+  });
+
+  it('gives the shell rounded edges and a clearcoat so studio IBL actually shows up', () => {
+    const { group } = buildCRT(palette);
+    const shell = group.getObjectByName('shell') as THREE.Mesh;
+    expect(shell.geometry).toBeInstanceOf(RoundedBoxGeometry);
+    const mat = shell.material as THREE.MeshPhysicalMaterial;
+    expect(mat).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+    expect(mat.clearcoat).toBeGreaterThan(0);
   });
 
   it('curves the screen plane rather than leaving it perfectly flat glass', () => {

@@ -5,7 +5,8 @@ import { reducedMotion } from '../lib/prefs';
 import { Link } from '../lib/router';
 import '../styles/tokens.css'; // readPalette below needs these as real computed styles
 import { readPalette } from '../three/palette';
-import { applyCameraOffset, buildScene, cappedDPR, dampParallax, idleDrift } from '../three/scene';
+import { createRenderer } from '../three/renderer';
+import { applyAspect, applyCameraOffset, buildScene, cappedDPR, dampParallax, idleDrift } from '../three/scene';
 import styles from './landing.module.css';
 
 // Task 8: the desk scene. Task 10 adds the click-to-dive raycast onto the
@@ -18,15 +19,14 @@ export default function Landing() {
     if (!canvas) return;
 
     const { scene, camera, homeCameraPosition } = buildScene(readPalette());
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const { renderer, composer, setSize, dispose } = createRenderer(canvas, scene, camera);
     renderer.setPixelRatio(cappedDPR(window.devicePixelRatio));
 
     const resize = () => {
       const { clientWidth: w, clientHeight: h } = canvas;
       if (!w || !h) return;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h, false);
+      applyAspect(camera, w / h);
+      setSize(w, h);
     };
     resize();
     window.addEventListener('resize', resize);
@@ -48,14 +48,14 @@ export default function Landing() {
       last = now;
       offset.copy(dampParallax(offset, idleDrift(now / 1000).add(pointer), dt));
       applyCameraOffset(camera, homeCameraPosition, offset);
-      renderer.render(scene, camera);
+      composer.render();
       raf = window.requestAnimationFrame(frame);
     };
 
     if (still) {
       // One still frame at rest — no drift, no parallax, no ongoing rAF loop.
       applyCameraOffset(camera, homeCameraPosition, offset);
-      renderer.render(scene, camera);
+      composer.render();
     } else {
       raf = window.requestAnimationFrame(frame);
     }
@@ -64,7 +64,7 @@ export default function Landing() {
       window.cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('pointermove', onPointerMove);
-      renderer.dispose();
+      dispose();
       scene.traverse((obj) => {
         if (!(obj instanceof THREE.Mesh)) return;
         obj.geometry.dispose();

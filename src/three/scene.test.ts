@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { applyCameraOffset, buildScene, cappedDPR, dampParallax, idleDrift } from './scene';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { applyAspect, applyCameraOffset, buildScene, cappedDPR, dampParallax, idleDrift, LOOK_AT } from './scene';
 
 const palette = { bg: '#0B0D10', fg: '#C9D1D9', primary: '#00ADD8', accent: '#FFB454', secondary: '#1793D1' };
 
@@ -24,11 +25,40 @@ describe('buildScene', () => {
     expect(mat.color.getHexString()).toBe('ffb454');
   });
 
-  it('starts the camera at a sane distance from the desk, looking toward it', () => {
+  it('starts an orthographic camera at a true isometric angle, looking toward the desk', () => {
     const { camera, homeCameraPosition } = buildScene(palette);
-    expect(camera).toBeInstanceOf(THREE.PerspectiveCamera);
+    expect(camera).toBeInstanceOf(THREE.OrthographicCamera);
     expect(camera.position.equals(homeCameraPosition)).toBe(true);
-    expect(homeCameraPosition.z).toBeGreaterThan(0); // in front of the desk, not inside it
+    // True isometric: equal x/y/z offsets from the look-at point (elevation
+    // atan(1/sqrt(2)) falls straight out of a (1,1,1) direction).
+    const offset = homeCameraPosition.clone().sub(LOOK_AT);
+    expect(offset.x).toBeCloseTo(offset.y, 5);
+    expect(offset.y).toBeCloseTo(offset.z, 5);
+    expect(offset.x).toBeGreaterThan(0);
+  });
+
+  it('sizes the orthographic frustum from the given aspect ratio, keeping the vertical extent fixed', () => {
+    const { camera } = buildScene(palette);
+    applyAspect(camera, 2);
+    const wide = camera.right - camera.left;
+    const height = camera.top - camera.bottom;
+    applyAspect(camera, 1);
+    const square = camera.right - camera.left;
+    expect(camera.top - camera.bottom).toBeCloseTo(height, 5); // vertical extent unchanged
+    expect(wide).toBeGreaterThan(square); // wider aspect -> wider frustum
+  });
+
+  it('rounds every visible box edge — no hard 90° corner survives', () => {
+    const { scene } = buildScene(palette);
+    let sawBox = false;
+    let sawRoundedBox = false;
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      if (o.geometry instanceof RoundedBoxGeometry) sawRoundedBox = true;
+      else if (o.geometry instanceof THREE.BoxGeometry) sawBox = true;
+    });
+    expect(sawRoundedBox).toBe(true);
+    expect(sawBox).toBe(false);
   });
 
   it('never adds a shared object twice — every mesh has exactly one parent', () => {
@@ -99,7 +129,7 @@ describe('dampParallax', () => {
 
 describe('applyCameraOffset', () => {
   it('offsets the camera from home and re-aims it at the desk', () => {
-    const camera = new THREE.PerspectiveCamera();
+    const camera = new THREE.OrthographicCamera();
     const home = new THREE.Vector3(0, 1.4, 2.6);
     const before = camera.quaternion.clone();
     applyCameraOffset(camera, home, new THREE.Vector2(0.2, -0.1));

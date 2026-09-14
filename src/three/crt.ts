@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { Palette } from './palette';
 
 /**
@@ -35,26 +36,36 @@ export function buildCRT(palette: Palette): CRT {
   const group = new THREE.Group();
   group.name = 'crt';
 
-  const shellMaterial = new THREE.MeshStandardMaterial({ color: SHELL_DARK, roughness: 0.65, metalness: 0.1 });
+  // Physical, not standard: clearcoat is what makes the studio IBL from
+  // RoomEnvironment actually visible as a highlight on the plastic shell —
+  // a flat MeshStandardMaterial barely shows a procedural environment map.
+  const shellMaterial = new THREE.MeshPhysicalMaterial({
+    color: SHELL_DARK,
+    roughness: 0.55,
+    metalness: 0.05,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.3,
+  });
 
-  const shell = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.15, 1.05), shellMaterial);
+  const shell = new THREE.Mesh(new RoundedBoxGeometry(1.5, 1.15, 1.05, 3, 0.06), shellMaterial);
   shell.name = 'shell';
   shell.castShadow = true;
   shell.receiveShadow = true;
   group.add(shell);
 
-  // A simple bevel: a slightly smaller, forward-set box reads as a raised front bezel
-  // without pulling in an addon geometry for true rounded corners.
-  const bezel = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.98, 0.06), shellMaterial);
+  const bezel = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.98, 0.06, 3, 0.03), shellMaterial);
   bezel.position.z = 0.52;
   group.add(bezel);
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.28, 16), shellMaterial);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.28, 20), shellMaterial);
   neck.position.y = -0.68;
+  neck.castShadow = true;
   group.add(neck);
 
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 0.06, 24), shellMaterial);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 0.06, 32), shellMaterial);
   base.position.y = -0.85;
+  base.castShadow = true;
+  base.receiveShadow = true;
   group.add(base);
 
   const screenGeometry = curveScreen(new THREE.PlaneGeometry(1.08, 0.82, 32, 32));

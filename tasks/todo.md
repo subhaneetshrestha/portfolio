@@ -359,44 +359,62 @@ that; here, a `matchMedia('(pointer: coarse)')`/width check picks the mode).
 
 ## Phase 2: The 3D landing
 
-## Task 8: Procedural CRT scene
+## Task 8: Landing scene — rebuilt after Checkpoint B (2026-09-14)
 
-**Description:** Build the monitor from Three.js primitives in `src/three/crt.ts` — bevelled shell,
-curved screen plane, emissive material, subtle bloom, dark room with a single key light. Idle camera
-drift plus damped pointer parallax, using a hand-rolled rig rather than `OrbitControls` (users must not
-be able to orbit away mid-reveal). Renders on `/` inside its own lazily-loaded chunk.
+**Reopened.** The first pass (procedural CRT, dark room, 5 objects) was built with no way to
+see it — this environment has no browser — and shipped looking exactly as bad as that implies:
+a flat cyan rectangle, a black silhouette tower, no bevels, no lighting beyond two point lights.
+User feedback: "the design of the monitor is very bad and low quality," with a reference image
+(isometric, bevelled, heavily-dressed desk scene). Full rework plan: `tasks/plan.md`, "Landing
+scene redesign — isometric night desk."
 
-**Revised 2026-09-13 — desk scene, not a lone monitor:**
-Dark room: floor plane under a soft radial falloff; desk slab; retro CRT
-(bevelled shell, curved glass, slight barrel distortion in the screen
-shader, scanlines); PC tower beside the desk with one small LED in
---accent; keyboard slab. Lighting: the screen is emissive and drives a
-warm point light; a cool rim light tinted toward --secondary; contact
-shadows from one shadow-casting light or a blurred shadow-plane texture,
-whichever holds 60fps. Idle camera drift + damped pointer parallax. HTML
-overlay: name, one line, "click the monitor" hint, and a skip link to
-`/tui` reachable in one Tab. Everything else as originally specified.
+### Task 8.0 — Headless screenshot harness · DONE (`d486339`)
+`npm run shoot` builds, boots `vite preview`, drives a real headless Chromium (SwiftShader
+software GL — WebGL genuinely renders) to screenshot `/` at 1440x900 and 390x844. `playwright`
+is installed `--no-save` — absent from package.json/package-lock.json — so Cloudflare's build
+never sees it. This closes the actual root cause: every task from here is screenshot-checked
+before it's pushed, not shipped blind.
+- [x] `npm run shoot` writes both PNGs from a real WebGL render
+- [x] `shots/` is gitignored; the dependency is dev-only and absent from `dist/`
 
-**Acceptance criteria:**
-- [x] No external 3D assets committed to the repo
-- [ ] Holds 60fps on desktop; device pixel ratio capped at 2  ← DPR capping is verified (Landing.test.tsx asserts `setPixelRatio(2)` behind a spoofed DPR of 4); 60fps needs a real browser and DevTools, not run here
-- [x] `three` appears only in the lazily-loaded landing chunk — verified: entry chunk 270,470 bytes with 0 occurrences of "WebGLRenderer"; Landing chunk carries it (527,332 bytes, gzip 132.7 KB) and is never requested by `/tui` (tests/build.test.ts)
+### Task 8a — Rendering pipeline · DONE
+Orthographic isometric camera (`applyAspect`, true isometric via a (1,1,1) camera direction);
+`RoomEnvironment` IBL via `PMREMGenerator` in new `src/three/renderer.ts`, dimmed to
+`environmentIntensity = 0.22` after the first screenshot showed the studio-bright default
+washing the near-black palette to flat grey; `ACESFilmicToneMapping`; `PCFSoftShadowMap`
+(r186 note: WebGL renderer logs a fallback to `PCFShadowMap` — soft shadows still work via the
+requested type, harmless); `EffectComposer` → `RenderPass` → `UnrealBloomPass` → `OutputPass`;
+`RoundedBoxGeometry` and `MeshPhysicalMaterial` (clearcoat) on the shell, desk, tower, keyboard.
+- [x] Camera is orthographic at a true isometric angle; no perspective divergence
+- [x] `scene.environment` is a PMREM from `RoomEnvironment` — no HDR file in the repo
+- [x] Every visible edge is bevelled; no hard 90° corner survives (`scene.test.ts` asserts it)
+- [x] Bloom affects the screen/glow only, not the whole frame — visually confirmed in `shots/`
 
-**Verification:**
-- [x] Build succeeds: `npm run build` — inspect the chunk split in the output
-- [ ] Manual check: DevTools Performance trace, confirm frame time under 16ms  ← needs a real browser, not run here
-- [x] Manual check: load `/tui` and confirm `three` is never requested — automated by tests/build.test.ts's chunk-split assertions, which now exercise real three.js code
+**Verify:** `npm run shoot` — screenshot went from a flat cyan slab with an invisible black
+tower to a properly bevelled, lit, isometric scene with visible IBL reflections on every shell,
+in one iteration once the harness caught the over-bright first attempt. 272 tests, clean build,
+entry chunk still 0 occurrences of "WebGLRenderer" (Landing chunk: 527KB → 560KB gz payload,
++13KB for the addons, exactly the plan's estimate).
 
-**Dependencies:** Task 1
+> **Checkpoint B1 — is the quality jump real? Stopping here for review**, per tasks/plan.md.
+> Five objects, properly lit — the monitor's actual *shape* (a CRT box, not yet the reference's
+> modern flat panel) is deliberately untouched; that's Task 8b.
 
-**Files likely touched:**
-- `src/three/crt.ts`
-- `src/three/scene.ts`
-- `src/landing/Landing.tsx`
+### Task 8b — The desk hero · not started
+`crt.ts` → `monitor.ts`: thin-bezel flat panel, slim neck, weighted base, screen tilt, clearcoat
+glass. Tower with a cyan side glow, mech keyboard (instanced keys), mousepad, mouse.
 
-**Estimated scope:** Medium
+### Task 8c — Desk companions · not started
+Laptop, tablet, mug, pen cup, small succulent.
 
----
+### Task 8d — Room shell and furniture · not started
+Walls, floor, skirting, window (cool night rim light), rug, ergonomic chair.
+
+### Task 8e — Dressing · not started
+Shelf with books/cactus, two posters, monstera, bin, slippers, cables.
+
+### Task 8f — Polish and perf gate · not started
+Final lighting pass, 60fps measurement, chunk-growth record, reduced-motion/fallback re-check.
 
 ### Checkpoint B: Does the procedural CRT look good enough?
 - [ ] Review the rendered scene against the intended feel

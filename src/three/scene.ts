@@ -1,14 +1,25 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { buildCRT } from './crt';
 import type { Palette } from './palette';
 
 /**
  * The desk scene the landing page shows before a visitor dives in: a dark
- * room, a desk carrying the CRT, a tower and a keyboard. Everything here is
- * primitives — see tasks/plan.md, "The CRT is built procedurally".
+ * room, a desk carrying the CRT, a tower and a keyboard, framed with a true
+ * isometric camera. Everything here is primitives — see tasks/plan.md,
+ * "The CRT is built procedurally", and "Landing scene redesign" for the
+ * isometric/IBL/bevel rework this file went through after Checkpoint B
+ * found the first pass "very bad and low quality".
  */
 
-const LOOK_AT = new THREE.Vector3(0, 0.9, -0.3);
+export const LOOK_AT = new THREE.Vector3(0.15, 0.7, -0.15);
+
+/** True isometric: a (1,1,1) direction gives exactly the classic ~35.264° elevation. */
+const ISO_DIRECTION = new THREE.Vector3(1, 1, 1).normalize();
+const ISO_DISTANCE = 6.2;
+
+/** Vertical world-space height the frustum shows at aspect 1; width follows aspect. */
+const FRUSTUM_HEIGHT = 4.2;
 
 function buildRoom(palette: Palette): THREE.Group {
   const group = new THREE.Group();
@@ -39,9 +50,16 @@ function buildRoom(palette: Palette): THREE.Group {
 function buildDesk(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'desk';
-  const material = new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.15), roughness: 0.7 });
+  // Clearcoat: a lacquered desk surface picks up the studio IBL as a soft
+  // highlight, the same reason the CRT shell got MeshPhysicalMaterial.
+  const material = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(palette.fg).multiplyScalar(0.15),
+    roughness: 0.6,
+    clearcoat: 0.35,
+    clearcoatRoughness: 0.4,
+  });
 
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 1.3), material);
+  const slab = new THREE.Mesh(new RoundedBoxGeometry(3.2, 0.08, 1.3, 2, 0.03), material);
   slab.position.y = 0.62;
   slab.castShadow = true;
   slab.receiveShadow = true;
@@ -49,8 +67,9 @@ function buildDesk(palette: Palette): THREE.Group {
 
   const legXs = [-1.5, 1.5];
   for (const x of legXs) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.62, 0.08), material);
+    const leg = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.62, 0.08, 1, 0.015), material);
     leg.position.set(x, 0.31, 0.55);
+    leg.castShadow = true;
     group.add(leg);
     const legBack = leg.clone();
     legBack.position.z = -0.55;
@@ -64,8 +83,8 @@ function buildTower(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'tower';
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.85, 0.7),
-    new THREE.MeshStandardMaterial({ color: 0x161616, roughness: 0.6, metalness: 0.15 }),
+    new RoundedBoxGeometry(0.32, 0.85, 0.7, 2, 0.025),
+    new THREE.MeshPhysicalMaterial({ color: 0x161616, roughness: 0.5, metalness: 0.15, clearcoat: 0.4, clearcoatRoughness: 0.35 }),
   );
   body.name = 'towerBody';
   body.castShadow = true;
@@ -88,8 +107,8 @@ function buildKeyboard(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'keyboard';
   const slab = new THREE.Mesh(
-    new THREE.BoxGeometry(0.85, 0.03, 0.3),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.1), roughness: 0.8 }),
+    new RoundedBoxGeometry(0.85, 0.03, 0.3, 1, 0.01),
+    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.1), roughness: 0.7, clearcoat: 0.2 }),
   );
   slab.castShadow = true;
   slab.receiveShadow = true;
@@ -99,7 +118,7 @@ function buildKeyboard(palette: Palette): THREE.Group {
 
 export type Scene = {
   scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
+  camera: THREE.OrthographicCamera;
   crt: ReturnType<typeof buildCRT>;
   homeCameraPosition: THREE.Vector3;
 };
@@ -128,7 +147,9 @@ export function buildScene(palette: Palette): Scene {
 
   // Lighting: the CRT's own glow (in buildCRT) is the warm key light. A cool rim
   // light tinted toward the secondary token separates the desk from the dark room,
-  // and one shadow-casting spot gives the desk objects contact shadows.
+  // and one shadow-casting spot gives the desk objects contact shadows. IBL (in
+  // renderer.ts, via RoomEnvironment) supplies the soft ambient fill and the
+  // reflections that make the new MeshPhysicalMaterial clearcoats read as physical.
   const rim = new THREE.DirectionalLight(new THREE.Color(palette.secondary), 0.35);
   rim.position.set(-3, 3, 1.5);
   scene.add(rim);
@@ -140,14 +161,30 @@ export function buildScene(palette: Palette): Scene {
   key.shadow.mapSize.set(1024, 1024);
   scene.add(key);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.06));
-
-  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 30);
-  const homeCameraPosition = new THREE.Vector3(0.1, 1.55, 2.7);
+  const camera = new THREE.OrthographicCamera();
+  applyAspect(camera, 1);
+  const homeCameraPosition = LOOK_AT.clone().add(ISO_DIRECTION.clone().multiplyScalar(ISO_DISTANCE));
   camera.position.copy(homeCameraPosition);
   camera.lookAt(LOOK_AT);
 
   return { scene, camera, crt, homeCameraPosition };
+}
+
+/**
+ * Resizes the orthographic frustum for a new aspect ratio, keeping the
+ * vertical extent fixed — the isometric equivalent of setting `camera.aspect`
+ * on a perspective camera. Call after every canvas resize.
+ */
+export function applyAspect(camera: THREE.OrthographicCamera, aspect: number): void {
+  const halfHeight = FRUSTUM_HEIGHT / 2;
+  const halfWidth = halfHeight * aspect;
+  camera.left = -halfWidth;
+  camera.right = halfWidth;
+  camera.top = halfHeight;
+  camera.bottom = -halfHeight;
+  camera.near = 0.1;
+  camera.far = 30;
+  camera.updateProjectionMatrix();
 }
 
 /** A 3x/4x phone display triples fragment cost for no visible gain; cap it. */
@@ -179,7 +216,7 @@ export function dampParallax(
 }
 
 /** Applies a camera offset from its resting position and re-aims it at the desk. */
-export function applyCameraOffset(camera: THREE.PerspectiveCamera, home: THREE.Vector3, offset: THREE.Vector2): void {
+export function applyCameraOffset(camera: THREE.Camera, home: THREE.Vector3, offset: THREE.Vector2): void {
   camera.position.set(home.x + offset.x, home.y + offset.y, home.z);
   camera.lookAt(LOOK_AT);
 }

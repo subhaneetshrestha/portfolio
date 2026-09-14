@@ -1,27 +1,24 @@
 import { render, screen } from '@testing-library/react';
-import * as THREE from 'three';
 import { PROMPT } from '../content/resume';
 import Landing from './Landing';
 
-// WebGL context creation is the one real GPU boundary here — jsdom has no GPU,
-// so this is the one thing worth mocking. Everything else (Scene, camera,
-// lights, geometry) is plain JS and runs for real, same as src/three's own tests.
+// createRenderer (src/three/renderer.ts) is already tested on its own terms —
+// it owns the one real GPU boundary (WebGLRenderer, PMREMGenerator, the post
+// FX chain), none of which jsdom can run for real. Mocking that module here,
+// rather than 'three' itself, keeps these tests about Landing's own job:
+// wiring the mount/resize/pointer/teardown lifecycle around it.
 const dispose = vi.fn();
-const setPixelRatio = vi.fn();
 const setSize = vi.fn();
-const renderCall = vi.fn();
-vi.mock('three', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('three')>();
-  return {
-    ...actual,
-    WebGLRenderer: vi.fn().mockImplementation(() => ({
-      setPixelRatio,
-      setSize,
-      render: renderCall,
-      dispose,
-    })),
-  };
-});
+const setPixelRatio = vi.fn();
+const composerRender = vi.fn();
+vi.mock('../three/renderer', () => ({
+  createRenderer: vi.fn().mockImplementation(() => ({
+    renderer: { setPixelRatio },
+    composer: { render: composerRender },
+    setSize,
+    dispose,
+  })),
+}));
 
 describe('Landing', () => {
   beforeEach(() => vi.clearAllMocks()); // each test mounts its own renderer; the mocks are file-shared
@@ -37,10 +34,11 @@ describe('Landing', () => {
     expect(skip.getAttribute('href')).toBe('/tui');
   });
 
-  it('mounts a WebGL renderer on its canvas and disposes it on unmount', () => {
+  it('mounts the render pipeline on its canvas and disposes it on unmount', async () => {
+    const { createRenderer } = await import('../three/renderer');
     const { unmount, container } = render(<Landing />);
     expect(container.querySelector('canvas')).toBeTruthy();
-    expect(THREE.WebGLRenderer).toHaveBeenCalledOnce();
+    expect(createRenderer).toHaveBeenCalledOnce();
     expect(dispose).not.toHaveBeenCalled();
     unmount();
     expect(dispose).toHaveBeenCalledOnce();
@@ -54,8 +52,6 @@ describe('Landing', () => {
 
   it('renders nothing under prefers-reduced-motion beyond the static frame — no ongoing animation loop', () => {
     const raf = vi.spyOn(window, 'requestAnimationFrame');
-    // The global test stub answers every query false by default; import a scoped
-    // override just for this test via dynamic re-mock of the media query.
     vi.stubGlobal('matchMedia', (q: string) => ({
       matches: q.includes('reduce'),
       media: q,
@@ -63,7 +59,7 @@ describe('Landing', () => {
       removeEventListener: vi.fn(),
     }));
     render(<Landing />);
-    expect(renderCall).toHaveBeenCalledOnce(); // one static frame
+    expect(composerRender).toHaveBeenCalledOnce(); // one static frame
     expect(raf).not.toHaveBeenCalled(); // but no rAF loop kept running
     vi.unstubAllGlobals();
   });

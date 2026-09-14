@@ -88,6 +88,213 @@ focuses the input. `cat *.md` renders markdown-lite: `#` heading in
 --primary, `status:`/`stack:` keys in --accent, URLs as real links.
 Scrollback capped at 500 lines, auto-scrolls on output, prompt pinned.
 
+# Landing scene redesign — isometric night desk (Task 8 rework)
+
+## Context
+
+Task 8 shipped a procedural CRT scene (`814e409`, live). At Checkpoint B the verdict was
+**"the design of the monitor is very bad and low quality"** — correct. The root cause is not
+the approach, it's that **I built it blind**: no browser in this environment, so ~250 lines of
+geometry went from my head straight to production without anyone, including me, seeing it. Box
+primitives with hard 90° corners, no bevels, no environment lighting, no post-processing, no
+tone mapping — the plan itself specified "subtle bloom" and "scanlines" and neither shipped.
+
+A reference was supplied. Instagram's CDN refused it (403, signed URLs only) so it came via a
+Google thumbnail instead — 447×447, read directly.
+
+**What the reference is:** a bright isometric desk vignette. White walls, warm oak floor,
+daylight from a right-hand window. Modern thin-bezel widescreen monitor, white PC tower with
+magenta RGB, open laptop on a stand, tablet, mech keyboard, mousepad. Heavily dressed — monstera
+in a white pot, succulent, floating shelf with books and a cactus, two framed posters ("Stay
+Hungry, Stay Foolish"), pen cup, mug, bin, slippers, orange shag rug, ergonomic chair. Soft
+shadows, rounded bevels on everything, stylised "toy-like" Blender-render look.
+
+### Decisions taken with the user
+| | |
+|---|---|
+| Checkpoint B | **Invest in the procedural pipeline** — no sourced model, zero 3D assets stands |
+| Scope | **Whole scene**, adopting the reference's form language **in the dark brand palette** |
+| "Fluid 3D models" | **Smooth, high-quality geometry** — moulded, not built from boxes |
+| Sequencing | **Quality pipeline first**, then props in reviewable batches |
+
+### What changes from the shipped scene
+| shipped | becomes |
+|---|---|
+| Dark room, moody | Dark **isometric** room — same darkness, new framing |
+| Retro CRT | Modern thin-bezel flat panel |
+| Perspective camera + drift | **Orthographic** isometric camera |
+| 5 objects | ~25 props |
+| 3 lights, no IBL, no post | IBL + key/fill/rim + bloom + ACES tone mapping |
+| `BoxGeometry` | `RoundedBoxGeometry`, `LatheGeometry`, bevelled extrudes |
+
+### The night version of the reference
+The reference is daylight; the brand is near-black. Translating rather than copying:
+walls dark charcoal · desk dark walnut · window a cool night glow (`--secondary`, Arch blue)
+· desk lamp a warm amber pool (`--accent`) · tower glow Go cyan (`--primary`) instead of
+magenta · rug muted with an amber undertone · plants deep green, rim-lit only.
+
+**The monitor becomes the scene's hero light source.** That is the point: the glow defines the
+composition and draws the eye exactly where the click goes, so "click the monitor to get inside"
+becomes visually inevitable rather than a caption. Bright-outside → dark-terminal also stops
+being a jarring jump.
+
+---
+
+## Feasibility: verified, and easier than photoreal
+
+Stylised isometric is the *sweet spot* for hand-coded geometry — all rounded boxes, cylinders,
+lathes and flat colours, no textures, which is exactly what the zero-assets rule wants. Every
+addon needed **already ships inside the installed `three@0.186`** — nothing new to add but
+`three/addons` imports:
+
+| Need | Module (already present) | gzip |
+|---|---|---|
+| Studio IBL with **no HDR file** | `environments/RoomEnvironment` + `PMREMGenerator` | 1.7 KB |
+| Kill the "boxy" look | `geometries/RoundedBoxGeometry` (`w,h,d,segments,radius`) | 2.0 KB |
+| Post-processing chain | `EffectComposer` + `RenderPass` + `OutputPass` | 5.2 KB |
+| Screen / RGB glow | `UnrealBloomPass` | 3.9 KB |
+| Contact shadows *(deferred)* | `GTAOPass` | 4.3 KB |
+
+≈13 KB gzipped onto a chunk already at 132 KB gz, all of it lazy — `/tui` still loads none of it.
+`SMAAPass` is **rejected at 35.6 KB gz**; renderer `antialias: true` is enough at this DPR.
+
+Built into core, no import cost: `OrthographicCamera`, `ACESFilmicToneMapping`,
+`PCFSoftShadowMap`, `MeshPhysicalMaterial` (clearcoat for glass/screen).
+
+**`RoomEnvironment` is the single biggest lever** — it generates a studio environment map from a
+procedural scene, giving real reflections and soft ambient light for zero asset bytes. Most of
+the "cheap WebGL" feeling comes from its absence.
+
+### Scene colours
+The brand has 8 tokens; a dressed room needs wood, wall, foliage, fabric. `tokens.css` is the one
+sanctioned home for hex (`tests/no-raw-hex.test.ts` excludes only that file), so scene colours land
+there as a clearly separated `--scene-*` group, read through the existing `readPalette()`
+(`src/three/palette.ts`) — no hex ever enters `src/three/*.ts`. Variations come from colour maths
+off those tokens, so the whole scene stays palette-coherent.
+
+---
+
+## The real risk, and the fix
+
+**I still cannot see what I build.** That produced the current scene and will produce another one
+unless it changes. The machine has 144 GB free and Mesa EGL present, so a headless browser is
+viable — and it converts blind shipping into an iterative loop where I catch bad proportions
+before you do. This is **Task 8.0 and it gates everything after it**; it is a `devDependency`,
+so it adds **zero bytes** to what visitors download.
+
+---
+
+## Tasks
+
+Each is one complete vertical path — geometry + materials + lighting + tests + a visible result.
+On approval these are written into `tasks/plan.md` and `tasks/todo.md` (Task 8 is reopened;
+Tasks 9–11 shift to sit on the new scene).
+
+### Task 8.0 — Headless screenshot harness · S · deps: none
+Playwright chromium as a devDependency; `scripts/shoot.ts` boots `vite preview`, screenshots `/`
+at 1440×900 and 390×844 into a gitignored `shots/`, exits. `npm run shoot`.
+- [ ] `npm run shoot` writes both PNGs from a real WebGL render
+- [ ] `shots/` is gitignored; the dependency is dev-only and absent from `dist/`
+- **Verify:** run it, open the PNGs, confirm the current scene is recognisably in them
+- **Files:** `package.json`, `scripts/shoot.ts`, `.gitignore`
+
+> Everything below is checked against a screenshot before it is pushed.
+
+### Task 8a — Rendering pipeline · M · deps: 8.0
+The quality jump, applied to the objects already there. Orthographic isometric camera;
+`RoomEnvironment` IBL via `PMREMGenerator`; `ACESFilmicToneMapping`; `PCFSoftShadowMap` with one
+shadow-casting key light; `EffectComposer` → `RenderPass` → `UnrealBloomPass` (subtle, half-res)
+→ `OutputPass`; `RoundedBoxGeometry` and `MeshPhysicalMaterial` (clearcoat on glass) replacing
+the current boxes and `MeshStandardMaterial`; `--scene-*` tokens added.
+- [ ] Camera is orthographic at a true isometric angle; no perspective divergence
+- [ ] `scene.environment` is a PMREM from `RoomEnvironment` — no HDR file in the repo
+- [ ] Every visible edge is bevelled; no hard 90° corner survives
+- [ ] Bloom affects the screen/glow only, not the whole frame
+- **Verify:** `npm run shoot` — side-by-side against the current screenshot; `npx vitest run`; `npm run build`
+- **Files:** `src/three/scene.ts`, `src/three/renderer.ts` *(new)*, `src/landing/Landing.tsx`, `src/styles/tokens.css`, tests
+
+> **Checkpoint B1 — is the quality jump real?** Five objects, properly lit. If this doesn't
+> convince on a small scene, more props won't save it. **Stop for review.**
+
+### Task 8b — The desk hero · M · deps: 8a
+`crt.ts` → `monitor.ts`: thin-bezel flat panel, slim neck, weighted base, slight screen tilt,
+clearcoat glass, emissive panel driving the scene's key light. Tower with a Go-cyan side glow,
+mech keyboard (key grid via instancing), mousepad, mouse.
+- [ ] The monitor reads as a modern flat panel, not a box with a screen decal
+- [ ] The screen mesh stays named and a real child of the group (Task 10 raycasts it recursively)
+- [ ] Keyboard keys are instanced, not 80 draw calls
+- **Verify:** screenshot; `npx vitest run`
+- **Files:** `src/three/monitor.ts`, `src/three/desk.ts`, `src/three/scene.ts`, tests
+
+> **Checkpoint B2 — is the monitor right now?** This is the object that was called bad. **Stop for review.**
+
+### Task 8c — Desk companions · M · deps: 8b
+Laptop open on a stand, tablet flat on the desk, mug, pen cup with pens, small succulent.
+- [ ] Each prop is bevelled and palette-derived; none introduces a texture or hex literal
+- **Verify:** screenshot; `npx vitest run`; `npm run build` (chunk delta recorded)
+- **Files:** `src/three/props/*.ts`, `src/three/scene.ts`, tests
+
+### Task 8d — Room shell and furniture · M · deps: 8a
+Walls, floor, skirting, window throwing a cool night rim light, round rug, ergonomic chair
+(seat, back, arms, gas post, five-star base).
+- [ ] Window light reads as the cool counterpoint to the monitor's glow
+- [ ] Chair silhouette is recognisable at isometric framing
+- **Verify:** screenshot; `npx vitest run`
+- **Files:** `src/three/room.ts`, `src/three/props/chair.ts`, `src/three/scene.ts`, tests
+
+### Task 8e — Dressing · M · deps: 8c, 8d
+Floating shelf with books and a cactus, two wall posters (one carries the `▊` mark), monstera in
+a pot, bin, slippers, a desk cable or two.
+- [ ] Scene reads as lived-in at a glance, matching the reference's density
+- **Verify:** screenshot at both sizes; `npx vitest run`
+- **Files:** `src/three/props/*.ts`, `src/three/room.ts`, tests
+
+### Task 8f — Polish and perf gate · M · deps: 8e
+Final lighting and material pass. Measure frame time; decide `GTAOPass` in or out on evidence.
+Confirm reduced-motion still renders one static frame and the chunk stays lazy.
+- [ ] 60fps at 1440×900 on desktop, measured not assumed
+- [ ] Landing chunk growth recorded; entry chunk still contains zero `WebGLRenderer`
+- [ ] `prefers-reduced-motion` renders one still frame, no rAF loop
+- **Verify:** DevTools trace via the harness; `npm run build`; `npx vitest run`
+- **Files:** `src/three/*.ts`, `src/landing/Landing.tsx`, `tasks/todo.md`
+
+> **Checkpoint B-final — whole scene against the reference.** Then Tasks 9–11 (screen texture,
+> dive, fallbacks) resume on top of it.
+
+---
+
+## Tests
+
+Existing structure holds; these break by design and get rewritten with each task:
+`src/three/scene.test.ts` pins `['desk','crt','tower','keyboard','room']` and
+`PerspectiveCamera` — both change in 8a/8b. `src/landing/Landing.test.tsx` mocks only
+`WebGLRenderer`; it gains an `EffectComposer` mock. Everything else — geometry, materials,
+lights, the drift/parallax maths — keeps running for real in jsdom, no GPU needed.
+`tests/no-3d-assets.test.ts`, `tests/no-raw-hex.test.ts` and `tests/build.test.ts`'s chunk-split
+assertions are unchanged and keep guarding the invariants.
+
+## Risks
+| Risk | Mitigation |
+|---|---|
+| Building blind again | Task 8.0 gates everything; every push is screenshot-checked first |
+| Bright reference vs dark brand | Translate, don't copy — night palette, monitor as hero light |
+| Scope: 5 → ~25 props | Batched into 8b–8e, each independently reviewable |
+| Perf: shadows + bloom + 25 props | One shadow-caster, half-res bloom, instanced keys, 8f measures |
+| Chunk growth | ~13 KB gz for addons; lazy, so `/tui` unaffected; recorded per task |
+| Stylised ≠ reference exactly | Checkpoints B1/B2 catch drift early, before the dressing lands |
+
+## Verification (end to end)
+```bash
+npm run shoot        # screenshots / at 1440×900 and 390×844
+npx vitest run       # unit + structural guards
+npm run build        # chunk split: three.js stays out of the entry
+```
+1. Screenshots match the reference's form language in the brand's night palette
+2. `/tui` requests zero three.js (`tests/build.test.ts`)
+3. Reduced-motion → one static frame, no animation loop
+4. 60fps at 1440×900, measured in 8f
+5. Live at portfolio.subhaneetshrestha.com.np after push
+
 ---
 
 ## Brand
