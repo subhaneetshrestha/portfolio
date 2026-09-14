@@ -378,14 +378,14 @@ overlay: name, one line, "click the monitor" hint, and a skip link to
 `/tui` reachable in one Tab. Everything else as originally specified.
 
 **Acceptance criteria:**
-- [ ] No external 3D assets committed to the repo
-- [ ] Holds 60fps on desktop; device pixel ratio capped at 2
-- [ ] `three` appears only in the lazily-loaded landing chunk
+- [x] No external 3D assets committed to the repo
+- [ ] Holds 60fps on desktop; device pixel ratio capped at 2  ← DPR capping is verified (Landing.test.tsx asserts `setPixelRatio(2)` behind a spoofed DPR of 4); 60fps needs a real browser and DevTools, not run here
+- [x] `three` appears only in the lazily-loaded landing chunk — verified: entry chunk 270,470 bytes with 0 occurrences of "WebGLRenderer"; Landing chunk carries it (527,332 bytes, gzip 132.7 KB) and is never requested by `/tui` (tests/build.test.ts)
 
 **Verification:**
-- [ ] Build succeeds: `npm run build` — inspect the chunk split in the output
-- [ ] Manual check: DevTools Performance trace, confirm frame time under 16ms
-- [ ] Manual check: load `/tui` and confirm `three` is never requested
+- [x] Build succeeds: `npm run build` — inspect the chunk split in the output
+- [ ] Manual check: DevTools Performance trace, confirm frame time under 16ms  ← needs a real browser, not run here
+- [x] Manual check: load `/tui` and confirm `three` is never requested — automated by tests/build.test.ts's chunk-split assertions, which now exercise real three.js code
 
 **Dependencies:** Task 1
 
