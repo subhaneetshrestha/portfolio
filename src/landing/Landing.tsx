@@ -1,3 +1,4 @@
+import { PROMPT } from '../content/resume';
 import { Link } from '../lib/router';
 
 // Placeholder. Task 8 replaces this with the procedural CRT scene;
@@ -6,7 +7,7 @@ export default function Landing() {
   return (
     <main className="centered">
       <p>
-        subhaneet@arch:~$ <span className="cursor">▊</span>
+        {PROMPT} <span className="cursor">▊</span>
       </p>
       <Link to="/tui">get inside →</Link>
     </main>

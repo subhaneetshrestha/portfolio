@@ -47,7 +47,7 @@ const readme = (p: (typeof featured)[number]) => {
   return [
     p.markdown.trimEnd(),
     '',
-    p.repoUrl ? `repo: ${p.repoUrl}` : 'repo: private',
+    p.repoUrl ? `repo: ${p.repoUrl}` : 'repo: not public',
     ...(p.pushedAt ? [`last push: ${p.pushedAt}`] : []),
     ...(latest ? [`release: ${latest.tag}${latest.prerelease ? ' (pre-release)' : ''}`, ...assets(latest)] : []),
   ].join('\n');

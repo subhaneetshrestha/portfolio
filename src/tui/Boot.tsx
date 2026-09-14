@@ -10,7 +10,7 @@ const checked = deployments.filter((d) => d.url);
 // 2xx/3xx after redirects is live — the same rule the deployments pane draws its dot from.
 const live = checked.filter((d) => { const c = github.liveness[d.url!]; return c !== undefined && c >= 200 && c < 400; }).length;
 const LINES = [
-  `subhaneet-os (${HOST}) tty1`,
+  `Arch Linux (${HOST}) tty1`,
   `[ ok ] mounted /home/${handle}`,
   `[ ok ] indexed ${github.repos.length} repositories`,
   `[ ok ] checked ${checked.length} deployments — ${live} live`,

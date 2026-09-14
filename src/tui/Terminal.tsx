@@ -12,7 +12,7 @@ const CAP = 500; // lines of scrollback
 const MOTD = 'text only. type help.';
 
 type Chunk = string[] | { md: string };
-type Entry = { prompt?: string; input?: string; output: Chunk[] };
+type Entry = { id: number; prompt?: string; input?: string; output: Chunk[] };
 
 /** The brand mark with the working directory in it: hyzii@arch:~/projects$ */
 export const prompt = (cwd: string) => PROMPT.replace('~', cwd.replace(new RegExp(`^${HOME}(?=/|$)`), '~'));
@@ -28,7 +28,11 @@ const cap = (log: Entry[]) => {
 };
 
 export function Terminal({ initial, onCwd, ref }: { initial?: string | null; onCwd?: (cwd: string) => void; ref?: Ref<HTMLInputElement> }) {
-  const [log, setLog] = useState<Entry[]>([{ output: [[MOTD]] }]);
+  const [log, setLog] = useState<Entry[]>([{ id: 0, output: [[MOTD]] }]);
+  // Scrollback entries are keyed by this, not array position — cap() drops from the
+  // front, and a position-based key would make React rewrite every surviving <li> in
+  // place (and, since the log is aria-live=polite, re-announce them) on every drop.
+  const seq = useRef(1);
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [cwd, setCwd] = useState(HOME);
@@ -42,7 +46,7 @@ export function Terminal({ initial, onCwd, ref }: { initial?: string | null; onC
     if (el) el.scrollTop = el.scrollHeight;
   }, [log]);
 
-  const append = (entry: Entry) => setLog((l) => cap([...l, { prompt: prompt(cwd), ...entry }]));
+  const append = (entry: Omit<Entry, 'id'>) => setLog((l) => cap([...l, { id: seq.current++, prompt: prompt(cwd), ...entry }]));
 
   const exec = (input: string) => {
     const output: Chunk[] = [];
@@ -108,7 +112,9 @@ export function Terminal({ initial, onCwd, ref }: { initial?: string | null; onC
       if (replacement) setValue(replacement);
       else append({ input: value, output: [[candidates.join('  ')]] });
     } else if (e.key === 'Escape') {
-      e.currentTarget.blur();
+      // Hand focus to the scrollback rather than dropping it to <body>: from there
+      // ↑↓/PageUp/PageDown scroll nothing, since .log — not the document — scrolls.
+      logRef.current?.focus();
     }
   };
 
@@ -121,8 +127,8 @@ export function Terminal({ initial, onCwd, ref }: { initial?: string | null; onC
     <div className={styles.terminal} onClick={focus}>
       <div role="log" aria-live="polite" aria-label="terminal output" tabIndex={0} className={styles.log} ref={logRef}>
         <ol>
-          {log.map((entry, i) => (
-            <li key={i}>
+          {log.map((entry) => (
+            <li key={entry.id}>
               {entry.input !== undefined && <span className={styles.echo}>{entry.prompt} {entry.input}</span>}
               {entry.output.map((chunk, j) =>
                 Array.isArray(chunk) ? (

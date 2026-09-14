@@ -81,7 +81,7 @@ Deep links map to an initial command: `/tui` → MOTD + prompt,
 `clear` · `history` · `whoami` · `neofetch` (ASCII card: OS arch, shell,
 editor nvim, languages, uptime = days since 2020-06-09) · `echo` · `date` ·
 `exit`/`poweroff` (→ `/`, Task 10 wires the reverse dive) · aliases from
-`.bashrc`. Unknown: `sh: <cmd>: command not found. try help.`
+`.bashrc`. Unknown: `bash: <cmd>: command not found. try help.`
 Keys: Tab completes commands then paths relative to cwd; ↑/↓ history;
 Ctrl+L clear; Ctrl+C cancels the line; Ctrl+U clears it; click anywhere
 focuses the input. `cat *.md` renders markdown-lite: `#` heading in

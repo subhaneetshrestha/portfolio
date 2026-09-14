@@ -38,6 +38,13 @@ describe('Boot lines', () => {
     expect(text()).not.toMatch(/\d+\.\d+\.\d+/);
   });
 
+  it('names the same OS neofetch reports, not an invented distro', () => {
+    render(<Boot onDone={() => {}} />);
+    runBoot();
+    expect(text()).toContain('Arch Linux');
+    expect(text()).not.toMatch(/subhaneet-os/i);
+  });
+
   it('mounts the home of, and logs in as, the profile handle', () => {
     render(<Boot onDone={() => {}} />);
     runBoot();

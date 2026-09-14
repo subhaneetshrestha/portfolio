@@ -118,10 +118,10 @@ describe('contents', () => {
     for (const a of latest.assets) expect(md).toContain(a.url);
   });
 
-  it('a private project README says repo: private and claims no push date', () => {
+  it('a project without a public repo says repo: not public and claims no push date', () => {
     const priv = projects().find((p) => p.repoUrl === null)!;
     const md = read(`${HOME}/projects/${priv.id}/README.md`);
-    expect(md).toContain('repo: private');
+    expect(md).toContain('repo: not public');
     expect(md).not.toContain('last push:');
   });
 

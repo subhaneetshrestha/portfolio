@@ -271,7 +271,7 @@ Deep links map to an initial command: `/tui` → MOTD + prompt,
 `clear` · `history` · `whoami` · `neofetch` (ASCII card: OS arch, shell,
 editor nvim, languages, uptime = days since 2020-06-09) · `echo` · `date` ·
 `exit`/`poweroff` (→ `/`, Task 10 wires the reverse dive) · aliases from
-`.bashrc`. Unknown: `sh: <cmd>: command not found. try help.`
+`.bashrc`. Unknown: `bash: <cmd>: command not found. try help.`
 Keys: Tab completes commands then paths relative to cwd; ↑/↓ history;
 Ctrl+L clear; Ctrl+C cancels the line; Ctrl+U clears it; click anywhere
 focuses the input. `cat *.md` renders markdown-lite: `#` heading in
@@ -289,15 +289,15 @@ render the curated text plus footer; delete LangBar, the archive
 `<details>` and API excerpt rendering. Private repos get no link.
 
 **Acceptance criteria:**
-- [ ] `projects()` returns, for each featured id, the curated markdown and a
+- [x] `projects()` returns, for each featured id, the curated markdown and a
       `repoUrl` that is null when the repo is absent from the public data
-- [ ] No language byte counts or API README excerpts are rendered anywhere
-- [ ] `footy-stonks.md` renders its `[fill in]` lines as visible placeholders
+- [x] No language byte counts or API README excerpts are rendered anywhere
+- [x] `footy-stonks.md` renders its `[fill in]` lines as visible placeholders
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run`
-- [ ] Build succeeds: `npm run build`
-- [ ] Manual check: `grep -r "languages" src/tui` finds nothing rendering bytes
+- [x] Tests pass: `npx vitest run`
+- [x] Build succeeds: `npm run build`
+- [x] Manual check: `grep -r "languages" src/tui` finds nothing rendering bytes
 
 **Dependencies:** Task 3, Task 5
 **Files likely touched:** `src/content/projects/*.md`, `src/content/projects.ts`,
@@ -315,19 +315,19 @@ components render only under the touch/mobile breakpoint (Task 12 finishes
 that; here, a `matchMedia('(pointer: coarse)')`/width check picks the mode).
 
 **Acceptance criteria:**
-- [ ] `ls`, `cd`, `pwd`, `cat`, `tree` behave like their POSIX namesakes on the
+- [x] `ls`, `cd`, `pwd`, `cat`, `tree` behave like their POSIX namesakes on the
       virtual tree, including `..`, `~`, relative paths, and errors
       (`cat: x: No such file or directory`, `cd: x: Not a directory`)
-- [ ] Tab completes commands, then paths relative to cwd; one match completes,
+- [x] Tab completes commands, then paths relative to cwd; one match completes,
       several list, zero is silent
-- [ ] `/tui/resume` cold-loads straight into `cat ~/resume.md` output
-- [ ] `open` on a project README opens the repo only when public
-- [ ] Every command in the table is exercised by a test; unknown commands
+- [x] `/tui/resume` cold-loads straight into `cat ~/resume.md` output
+- [x] `open` on a project README opens the repo only when public
+- [x] Every command in the table is exercised by a test; unknown commands
       produce the not-found line
 
 **Verification:**
-- [ ] Tests pass: `npx vitest run`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `npx vitest run`
+- [x] Build succeeds: `npm run build`
 - [ ] Manual check: keyboard-only session — `ls`, `cd projects`, Tab, `cat`,
       `neofetch`, `history`, `poweroff`
 
@@ -339,10 +339,21 @@ that; here, a `matchMedia('(pointer: coarse)')`/width check picks the mode).
 16b commands + completion; 16c terminal UI + deep-link initial command
 
 ### Checkpoint A′: shell-first portfolio
-- [ ] Build clean, suite green
-- [ ] Keyboard-only: land on `/tui`, `help`, browse projects, read the resume
-- [ ] Live at portfolio.subhaneetshrestha.com.np
-- [ ] User has edited the eight READMEs (or accepted the drafts)
+- [x] Build clean, suite green — 233 tests, `npm run build` clean
+- [x] Keyboard-only: land on `/tui`, `help`, browse projects, read the resume — covered end to end by Shell/Terminal/commands test suites
+- [ ] Live at portfolio.subhaneetshrestha.com.np reflecting this state  ← pending this push
+- [ ] User has edited the eight READMEs (or accepted the drafts)  ← still the drafted versions
+- [x] Resume filled from the user's CV (two revisions); no TODOs remain in `src/content/resume.ts`
+- [x] Phase 1 review disposition: round 1 found 54 → 45 confirmed (31 fixed across two groups, 13 folded
+      into Tasks 16/17, 1 left to the user — the `inventory` URL). Round 2 found 42; the session limit hit
+      mid-verification, so only 8 were adversarially confirmed before it died — all 8 fixed here (2 high:
+      the landing hand-typing the prompt instead of importing `PROMPT`, scrollback `<li>`s keyed by array
+      index instead of a stable id; 4 medium: j/k hijacking the terminal's own arrow-key scrolling, the
+      help dialog dropping focus to `<body>` on close, Escape stranding focus at `<body>` with no
+      documented way back, inconsistent “private” vs “not public” repo wording; 2 low: the boot banner
+      naming a different OS than `neofetch`, `bash:`/`sh:` disagreeing between the code and the docs).
+      The remaining 34 raw findings from round 2 were never adversarially verified — untriaged, sitting in
+      this session's scratchpad (`findings2-raw.json`); a future pass should re-run them through skeptics.
 
 ---
 

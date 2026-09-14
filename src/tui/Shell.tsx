@@ -52,6 +52,7 @@ export function Shell() {
   const [booted, setBooted] = useState(() => reducedMotion() || bootedThisSession());
   const finishBoot = useCallback(() => { rememberBooted(); setBooted(true); }, []);
   const [help, setHelp] = useState(false);
+  const opener = useRef<HTMLElement | null>(null);
   const [cwd, setCwd] = useState(HOME);
   const paneRef = useRef<HTMLElement>(null);
   const cmdRef = useRef<HTMLInputElement>(null);
@@ -61,7 +62,13 @@ export function Shell() {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
       if (e.key === 'Escape') return setHelp(false);
-      if (e.key === '?') return setHelp((h) => !h);
+      if (e.key === '?') {
+        setHelp((h) => {
+          if (!h) opener.current = document.activeElement as HTMLElement;
+          return !h;
+        });
+        return;
+      }
       if (e.key === ':') { e.preventDefault(); return cmdRef.current?.focus(); }
       if (desktop) return;
       const jump = PANES.find((p) => p.key === e.key);
@@ -70,7 +77,11 @@ export function Shell() {
       const turn = e.key === 'l' || e.key === 'ArrowRight' ? 1 : e.key === 'h' || e.key === 'ArrowLeft' ? -1 : 0;
       if (turn) return navigate(PANES[(idx + turn + PANES.length) % PANES.length]!.path);
       const roll = e.key === 'j' || e.key === 'ArrowDown' ? 1 : e.key === 'k' || e.key === 'ArrowUp' ? -1 : 0;
-      if (roll) { e.preventDefault(); paneRef.current?.scrollBy({ top: roll * 48 }); }
+      // The terminal's own scrollback (role=log) scrolls itself; don't hijack its arrows.
+      if (roll && !(e.target instanceof HTMLElement && e.target.closest('[role="log"]'))) {
+        e.preventDefault();
+        paneRef.current?.scrollBy({ top: roll * 48 });
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -133,13 +144,13 @@ export function Shell() {
 
       <footer className={styles.statusline}>
         {!desktop && <span>{pane ?? 'error'}</span>}
-        <button type="button" className={styles.hint} onClick={() => setHelp(true)}>?:help</button>
+        <button type="button" className={styles.hint} onClick={() => { opener.current = document.activeElement as HTMLElement; setHelp(true); }}>?:help</button>
         <span className={styles.hint}>
-          {desktop ? 'tab:complete · ↑↓:history · ctrl+l:clear · esc:leave prompt' : 'h/l:switch · 1-4:jump · j/k:scroll'}
+          {desktop ? 'tab:complete · ↑↓:history · ctrl+l:clear · esc:scroll output' : 'h/l:switch · 1-4:jump · j/k:scroll'}
         </span>
       </footer>
 
-      {help && <Help shell={desktop} onClose={() => setHelp(false)} />}
+      {help && <Help shell={desktop} onClose={() => { setHelp(false); (opener.current ?? cmdRef.current)?.focus(); }} />}
     </div>
   );
 }
@@ -151,7 +162,7 @@ const SHELL_KEYS = [
   ['ctrl+l', 'clear the screen'],
   ['ctrl+c', 'cancel the line'],
   ['ctrl+u', 'clear the line'],
-  ['esc', 'leave the prompt'],
+  ['esc', 'focus the output; ↑↓ pgup pgdn scroll, : returns'],
   [':', 'back to the prompt'],
   ['?', 'toggle this help, outside the prompt'],
 ];

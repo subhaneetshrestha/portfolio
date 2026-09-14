@@ -231,10 +231,10 @@ describe('open', () => {
     }
   });
 
-  it('says so for a private project and opens nothing', () => {
+  it('says so for a project with no public repo and opens nothing', () => {
     const c = ctx();
     run(`open projects/${priv.id}`, c);
-    expect(c.out).toEqual(['repo is private']);
+    expect(c.out).toEqual(['repo: not public']);
     expect(c.openUrl).not.toHaveBeenCalled();
   });
 

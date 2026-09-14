@@ -141,7 +141,7 @@ export const TABLE: Command[] = [
       const fromPath = projectAt(ctx.fs.resolve(ctx.cwd, arg));
       const project = PROJECTS.find((p) => p.id === (fromPath ?? dep?.repo ?? arg));
       if (!project) return ctx.print(`open: ${arg}: no such project, deployment or url.`);
-      if (!project.repoUrl) return ctx.print('repo is private');
+      if (!project.repoUrl) return ctx.print('repo: not public');
       // A release carries no url of its own; the repo's releases page is the checkable one.
       ctx.openUrl(dep && !fromPath ? `${project.repoUrl}/releases` : project.repoUrl);
     },

@@ -95,6 +95,27 @@ describe('Shell keyboard', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('returns focus to whatever opened help when it closes, not to <body>', () => {
+    render(<Shell />);
+    const trigger = screen.getByText('?:help');
+    trigger.focus();
+    fireEvent.click(trigger);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'close' }));
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("doesn't hijack the terminal's own arrow-key scrolling in pane mode", () => {
+    render(<Shell />);
+    const cmdLog = screen.getByRole('log', { name: 'terminal output' });
+    cmdLog.focus();
+    const scrollBy = vi.fn();
+    Object.defineProperty(screen.getByRole('main'), 'scrollBy', { value: scrollBy, configurable: true });
+    const prevented = fireEvent.keyDown(cmdLog, { key: 'ArrowDown' });
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(prevented).toBe(true); // not preventDefault-ed by Shell — the log handles its own scrolling
+  });
+
   it('help names tab as completion inside the prompt and carries no developer notes', () => {
     render(<Shell />);
     fireEvent.keyDown(window, { key: '?' });

@@ -119,6 +119,24 @@ describe('Terminal output', () => {
     expect(items()[0]!.textContent).not.toMatch(/type help/);
   });
 
+  it('keeps a surviving entry\'s own DOM node and text stable when older entries are dropped', () => {
+    // Regression for keying scrollback <li>s by array index: once cap() drops the
+    // oldest entry, every remaining index shifts, and an index key makes React
+    // rewrite each surviving node's content in place — silently showing the wrong
+    // entry's text at that position (and re-announcing it, since the log is
+    // aria-live=polite). A stable per-entry id keeps each node tied to its own
+    // entry regardless of how many older ones get dropped around it.
+    render(<Terminal />);
+    for (let i = 0; i < 20; i++) enter(`echo warm-${i}`); // comfortably short of CAP
+    const before = items();
+    const survivor = before[before.length - 5]!; // will not itself be evicted below
+    const survivorText = survivor.textContent;
+    for (let i = 0; i < 235; i++) enter(`echo fill-${i}`); // forces many drops from the front
+    const after = items();
+    expect(after).toContain(survivor);
+    expect(survivor.textContent).toBe(survivorText);
+  });
+
   it('ignores an empty Enter', () => {
     render(<Terminal />);
     enter('   ');
