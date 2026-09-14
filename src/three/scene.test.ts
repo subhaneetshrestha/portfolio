@@ -5,11 +5,33 @@ import { applyAspect, applyCameraOffset, buildScene, cappedDPR, dampParallax, id
 const palette = { bg: '#0B0D10', fg: '#C9D1D9', primary: '#00ADD8', accent: '#FFB454', secondary: '#1793D1' };
 
 describe('buildScene', () => {
-  it('assembles a desk, a CRT, a tower and a keyboard into one scene', () => {
+  it('assembles a desk, a monitor, a tower, a keyboard, a mousepad and a mouse into one scene', () => {
     const { scene } = buildScene(palette);
-    for (const name of ['desk', 'crt', 'tower', 'keyboard', 'room']) {
+    for (const name of ['desk', 'monitor', 'tower', 'keyboard', 'mousepad', 'mouse', 'room']) {
       expect(scene.getObjectByName(name), name).toBeTruthy();
     }
+  });
+
+  it('gives the tower a Go-cyan side glow, not just the status LED', () => {
+    const { scene } = buildScene(palette);
+    const glow = scene.getObjectByName('towerGlow') as THREE.Mesh;
+    expect(glow).toBeTruthy();
+    const mat = glow.material as THREE.MeshBasicMaterial;
+    expect(mat.color.getHexString()).toBe('00add8'); // palette.primary, lowercase hex
+  });
+
+  it('builds the keyboard as one instanced draw call, not one mesh per key', () => {
+    const { scene } = buildScene(palette);
+    const keyboard = scene.getObjectByName('keyboard') as THREE.Group;
+    let instanced: THREE.InstancedMesh | null = null;
+    let plainKeyMeshes = 0;
+    keyboard.traverse((o) => {
+      if (o instanceof THREE.InstancedMesh) instanced = o;
+      else if (o instanceof THREE.Mesh && o.name === 'key') plainKeyMeshes++;
+    });
+    expect(instanced).toBeTruthy();
+    expect(instanced!.count).toBeGreaterThan(20); // a real key grid, not a token handful
+    expect(plainKeyMeshes).toBe(0);
   });
 
   it('paints the background from the palette, not a hardcoded color', () => {

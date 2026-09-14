@@ -400,9 +400,22 @@ entry chunk still 0 occurrences of "WebGLRenderer" (Landing chunk: 527KB → 560
 > Five objects, properly lit — the monitor's actual *shape* (a CRT box, not yet the reference's
 > modern flat panel) is deliberately untouched; that's Task 8b.
 
-### Task 8b — The desk hero · not started
-`crt.ts` → `monitor.ts`: thin-bezel flat panel, slim neck, weighted base, screen tilt, clearcoat
-glass. Tower with a cyan side glow, mech keyboard (instanced keys), mousepad, mouse.
+### Task 8b — The desk hero · DONE
+`crt.ts` → `monitor.ts`: thin-bezel flat panel (RoundedBoxGeometry, depth a fraction of
+width/height — no more CRT box), slim neck, weighted foot, -4° screen lean, clearcoat glass.
+Tower gained a slim vertical Go-cyan accent strip (`towerGlow`, palette.primary) plus a weak
+point light so it casts onto the desk beside it, alongside the existing amber LED. Keyboard
+rebuilt as a 15x5 instanced key grid (one `THREE.InstancedMesh` draw call, not 75 meshes) on its
+slab; mousepad and mouse added.
+- [x] The monitor reads as a modern flat panel, not a box with a screen decal — confirmed by
+      screenshot: thin bezel, slim stand, no CRT bulk
+- [x] The screen mesh stays named and a real child of the group (Task 10 raycasts it recursively)
+- [x] Keyboard keys are instanced, not 80 draw calls — `scene.test.ts` asserts an `InstancedMesh`
+      with >20 instances and zero individual `key`-named meshes
+
+**Verify:** `npm run shoot` — the desk now reads as an actual setup: monitor, full key grid,
+mouse on its pad, tower with a glowing edge. 38 tests in `src/three` + `src/landing`, 276 total,
+clean build, entry chunk still 0 occurrences of `WebGLRenderer`.
 
 ### Task 8c — Desk companions · not started
 Laptop, tablet, mug, pen cup, small succulent.

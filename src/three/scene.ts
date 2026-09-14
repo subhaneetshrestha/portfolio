@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { buildCRT } from './crt';
+import { buildMonitor } from './monitor';
 import type { Palette } from './palette';
 
 /**
@@ -100,26 +100,89 @@ function buildTower(palette: Palette): THREE.Group {
   led.position.set(0, 0.32, 0.351);
   group.add(led);
 
+  // A slim vertical Go-cyan accent strip down the front edge — the reference's
+  // magenta RGB tower, translated into the brand's primary token instead.
+  const glow = new THREE.Mesh(
+    new RoundedBoxGeometry(0.015, 0.7, 0.015, 1, 0.006),
+    new THREE.MeshBasicMaterial({ color: palette.primary }),
+  );
+  glow.name = 'towerGlow';
+  glow.position.set(0.14, 0, 0.353);
+  group.add(glow);
+  // A weak point light so the strip actually casts a little cyan onto the desk
+  // beside it, rather than only glowing in isolation.
+  const glowLight = new THREE.PointLight(new THREE.Color(palette.primary), 0.25, 1.2, 2);
+  glowLight.position.copy(glow.position);
+  group.add(glowLight);
+
   return group;
 }
 
+/** A grid of instanced key caps on a slab — one draw call for the whole board. */
 function buildKeyboard(palette: Palette): THREE.Group {
   const group = new THREE.Group();
   group.name = 'keyboard';
-  const slab = new THREE.Mesh(
-    new RoundedBoxGeometry(0.85, 0.03, 0.3, 1, 0.01),
-    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.1), roughness: 0.7, clearcoat: 0.2 }),
-  );
-  slab.castShadow = true;
-  slab.receiveShadow = true;
+  const boardMaterial = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(palette.fg).multiplyScalar(0.1),
+    roughness: 0.7,
+    clearcoat: 0.2,
+  });
+  const slab = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.03, 0.3, 1, 0.01), boardMaterial);
   group.add(slab);
+
+  const COLS = 15;
+  const ROWS = 5;
+  const KEY_SIZE = 0.045;
+  const GAP = 0.006;
+  const keyGeometry = new RoundedBoxGeometry(KEY_SIZE, 0.014, KEY_SIZE, 1, 0.003);
+  const keyMaterial = new THREE.MeshPhysicalMaterial({ color: 0x141414, roughness: 0.55, clearcoat: 0.3 });
+  const keys = new THREE.InstancedMesh(keyGeometry, keyMaterial, COLS * ROWS);
+  keys.name = 'keys';
+  keys.castShadow = true;
+  const pitch = KEY_SIZE + GAP;
+  const originX = -((COLS - 1) * pitch) / 2;
+  const originZ = -((ROWS - 1) * pitch) / 2;
+  const m = new THREE.Matrix4();
+  let i = 0;
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      m.makeTranslation(originX + col * pitch, 0.022, originZ + row * pitch);
+      keys.setMatrixAt(i++, m);
+    }
+  }
+  keys.instanceMatrix.needsUpdate = true;
+  group.add(keys);
+
   return group;
 }
+
+function buildMousepad(palette: Palette): THREE.Mesh {
+  const pad = new THREE.Mesh(
+    new RoundedBoxGeometry(0.42, 0.008, 0.3, 1, 0.02),
+    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.06), roughness: 0.9 }),
+  );
+  pad.name = 'mousepad';
+  pad.receiveShadow = true;
+  return pad;
+}
+
+function buildMouse(palette: Palette): THREE.Mesh {
+  const mouse = new THREE.Mesh(
+    new RoundedBoxGeometry(0.075, 0.035, 0.12, 2, 0.03),
+    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.12), roughness: 0.45, clearcoat: 0.5 }),
+  );
+  mouse.name = 'mouse';
+  mouse.castShadow = true;
+  mouse.receiveShadow = true;
+  return mouse;
+}
+
+
 
 export type Scene = {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
-  crt: ReturnType<typeof buildCRT>;
+  monitor: ReturnType<typeof buildMonitor>;
   homeCameraPosition: THREE.Vector3;
 };
 
@@ -133,19 +196,28 @@ export function buildScene(palette: Palette): Scene {
   const desk = buildDesk(palette);
   scene.add(desk);
 
-  const crt = buildCRT(palette);
-  crt.group.position.set(0, 1.05, -0.35);
-  scene.add(crt.group);
+  const monitor = buildMonitor(palette);
+  monitor.group.position.set(0, 1.14, -0.35);
+  scene.add(monitor.group);
 
   const tower = buildTower(palette);
   tower.position.set(1.35, 0.435 + 0.66, -0.35);
   scene.add(tower);
 
   const keyboard = buildKeyboard(palette);
-  keyboard.position.set(0, 0.665, 0.35);
+  keyboard.position.set(0, 0.68, 0.35);
   scene.add(keyboard);
 
-  // Lighting: the CRT's own glow (in buildCRT) is the warm key light. A cool rim
+  const mousepad = buildMousepad(palette);
+  mousepad.position.set(0.62, 0.664, 0.3);
+  scene.add(mousepad);
+
+  const mouse = buildMouse(palette);
+  mouse.position.set(0.62, 0.685, 0.3);
+  mouse.rotation.y = THREE.MathUtils.degToRad(8);
+  scene.add(mouse);
+
+  // Lighting: the monitor's own glow (in buildMonitor) is the warm key light. A cool rim
   // light tinted toward the secondary token separates the desk from the dark room,
   // and one shadow-casting spot gives the desk objects contact shadows. IBL (in
   // renderer.ts, via RoomEnvironment) supplies the soft ambient fill and the
@@ -167,7 +239,7 @@ export function buildScene(palette: Palette): Scene {
   camera.position.copy(homeCameraPosition);
   camera.lookAt(LOOK_AT);
 
-  return { scene, camera, crt, homeCameraPosition };
+  return { scene, camera, monitor, homeCameraPosition };
 }
 
 /**
