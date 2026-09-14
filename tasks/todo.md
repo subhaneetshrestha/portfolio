@@ -417,8 +417,17 @@ slab; mousepad and mouse added.
 mouse on its pad, tower with a glowing edge. 38 tests in `src/three` + `src/landing`, 276 total,
 clean build, entry chunk still 0 occurrences of `WebGLRenderer`.
 
-### Task 8c — Desk companions · not started
-Laptop, tablet, mug, pen cup, small succulent.
+### Task 8c — Desk companions · DONE
+Open laptop (hinged screen at -100°, so it reads as open rather than flat), tablet, mug (torus
+handle), pen cup with two leaning pens, small succulent — all bevelled/physical, positioned above
+the desk surface.
+
+The first render made them essentially invisible: `key.target = desk` aimed the spotlight at the
+desk GROUP's origin, which sits at floor level (0,0,0) — everything actually resting ON the desk
+surface (y=0.66) was outside its effective cone. Retargeted to an explicit `Object3D` at desk
+height; widened the cone and raised intensity slightly. Objects were also sized for the tighter
+4.2-unit frustum from before the Task 8d room widened it to 7.5 — scaled up 1.6-1.7x to still read
+at the room's actual scale.
 
 ### Task 8d — Room shell and furniture · DONE
 Two walls meeting in a corner (back + side) so the isometric camera reads a room instead of a

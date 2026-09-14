@@ -260,6 +260,110 @@ function buildMouse(palette: Palette): THREE.Mesh {
 
 
 
+function buildLaptop(palette: Palette): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'laptop';
+  const material = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(palette.fg).multiplyScalar(0.12),
+    roughness: 0.4,
+    metalness: 0.3,
+    clearcoat: 0.5,
+  });
+
+  const base = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.018, 0.24, 1, 0.015), material);
+  base.castShadow = true;
+  base.receiveShadow = true;
+  group.add(base);
+
+  const screen = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.22, 0.012, 1, 0.015), material);
+  screen.name = 'laptopScreen';
+  // Hinged open: pivot from the base's back edge, tilted well past vertical.
+  screen.position.set(0, 0.1, -0.114);
+  screen.rotation.x = THREE.MathUtils.degToRad(-100);
+  screen.castShadow = true;
+  group.add(screen);
+
+  return group;
+}
+
+function buildTablet(palette: Palette): THREE.Mesh {
+  const tablet = new THREE.Mesh(
+    new RoundedBoxGeometry(0.22, 0.012, 0.3, 1, 0.02),
+    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.1), roughness: 0.35, clearcoat: 0.6 }),
+  );
+  tablet.name = 'tablet';
+  tablet.castShadow = true;
+  tablet.receiveShadow = true;
+  return tablet;
+}
+
+function buildMug(palette: Palette): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'mug';
+  const material = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.secondary).multiplyScalar(0.6), roughness: 0.5, clearcoat: 0.3 });
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.07, 16), material);
+  body.position.y = 0.035;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.006, 8, 16, Math.PI), material);
+  handle.position.set(0.032, 0.035, 0);
+  handle.rotation.y = Math.PI / 2;
+  group.add(handle);
+
+  return group;
+}
+
+function buildPenCup(palette: Palette): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'penCup';
+  const cup = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.026, 0.08, 16),
+    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.08), roughness: 0.6 }),
+  );
+  cup.position.y = 0.04;
+  cup.castShadow = true;
+  cup.receiveShadow = true;
+  group.add(cup);
+
+  // A couple of pens leaning out, just enough to read as "pens" at this scale.
+  const penMaterial = new THREE.MeshBasicMaterial({ color: palette.accent });
+  for (const [x, tilt] of [[0.008, 0.15], [-0.006, -0.1]] as const) {
+    const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.12, 6), penMaterial);
+    pen.position.set(x, 0.1, 0);
+    pen.rotation.z = tilt;
+    group.add(pen);
+  }
+
+  return group;
+}
+
+function buildSucculent(palette: Palette): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'succulent';
+  const pot = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.032, 0.026, 0.045, 16),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color(palette.fg).multiplyScalar(0.15), roughness: 0.8 }),
+  );
+  pot.position.y = 0.0225;
+  pot.castShadow = true;
+  pot.receiveShadow = true;
+  group.add(pot);
+
+  const plant = new THREE.Mesh(
+    new THREE.SphereGeometry(0.03, 8, 6),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color(0x1c3a24), roughness: 0.9 }),
+  );
+  plant.position.y = 0.06;
+  plant.scale.y = 0.8;
+  plant.castShadow = true;
+  group.add(plant);
+
+  return group;
+}
+
 export type Scene = {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
@@ -302,6 +406,33 @@ export function buildScene(palette: Palette): Scene {
   mouse.rotation.y = THREE.MathUtils.degToRad(8);
   scene.add(mouse);
 
+  const laptop = buildLaptop(palette);
+  laptop.scale.setScalar(1.7);
+  laptop.position.set(-1.05, 0.669, 0.1);
+  laptop.rotation.y = THREE.MathUtils.degToRad(12);
+  scene.add(laptop);
+
+  const tablet = buildTablet(palette);
+  tablet.scale.setScalar(1.7);
+  tablet.position.set(-0.62, 0.666, 0.42);
+  tablet.rotation.y = THREE.MathUtils.degToRad(-6);
+  scene.add(tablet);
+
+  const mug = buildMug(palette);
+  mug.scale.setScalar(1.6);
+  mug.position.set(-1.15, 0.66, 0.5);
+  scene.add(mug);
+
+  const penCup = buildPenCup(palette);
+  penCup.scale.setScalar(1.6);
+  penCup.position.set(-1.35, 0.66, -0.35);
+  scene.add(penCup);
+
+  const succulent = buildSucculent(palette);
+  succulent.scale.setScalar(1.6);
+  succulent.position.set(1.05, 0.66, -0.5);
+  scene.add(succulent);
+
   // Lighting: the monitor's own glow (in buildMonitor) is the warm key light. A cool rim
   // light tinted toward the secondary token separates the desk from the dark room,
   // and one shadow-casting spot gives the desk objects contact shadows. IBL (in
@@ -311,9 +442,14 @@ export function buildScene(palette: Palette): Scene {
   rim.position.set(-3, 3, 1.5);
   scene.add(rim);
 
-  const key = new THREE.SpotLight(0xffffff, 0.45, 8, Math.PI / 5, 0.4);
+  const key = new THREE.SpotLight(0xffffff, 0.6, 9, Math.PI / 4.2, 0.45);
   key.position.set(2, 4, 2.5);
-  key.target = desk;
+  // Aim at the desk SURFACE, not the desk group's origin (which sits at floor
+  // level) — otherwise everything actually resting on the desk reads dim.
+  const keyTarget = new THREE.Object3D();
+  keyTarget.position.set(0, 0.66, -0.1);
+  scene.add(keyTarget);
+  key.target = keyTarget;
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   scene.add(key);

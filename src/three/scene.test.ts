@@ -93,6 +93,32 @@ describe('buildScene', () => {
   });
 });
 
+describe('buildScene — desk companions (Task 8c)', () => {
+  it('adds a laptop, a tablet, a mug, a pen cup and a succulent to the desk', () => {
+    const { scene } = buildScene(palette);
+    for (const name of ['laptop', 'tablet', 'mug', 'penCup', 'succulent']) {
+      expect(scene.getObjectByName(name), name).toBeTruthy();
+    }
+  });
+
+  it('opens the laptop screen at an angle, not lying flat like the base', () => {
+    const { scene } = buildScene(palette);
+    const laptop = scene.getObjectByName('laptop') as THREE.Group;
+    const screen = laptop.getObjectByName('laptopScreen') as THREE.Mesh;
+    expect(screen).toBeTruthy();
+    expect(Math.abs(screen.rotation.x)).toBeGreaterThan(0.3); // meaningfully tilted open
+  });
+
+  it('keeps every desk companion above the desk surface, not sunk into it', () => {
+    const { scene } = buildScene(palette);
+    const deskTop = 0.66; // desk slab top surface, from buildDesk()
+    for (const name of ['laptop', 'tablet', 'mug', 'penCup', 'succulent']) {
+      const obj = scene.getObjectByName(name)!;
+      expect(obj.position.y, name).toBeGreaterThanOrEqual(deskTop - 0.01);
+    }
+  });
+});
+
 describe('buildScene — room and furniture (Task 8d)', () => {
   it('builds a back wall and a side wall so the scene reads as a room, not a void', () => {
     const { scene } = buildScene(palette);
